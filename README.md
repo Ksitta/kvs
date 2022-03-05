@@ -68,6 +68,8 @@ See `include/conf.h` for the definitions.
 
 # More Details (If you are interested)
 
+## Tuning benchmark
+
 The benchmark defines a lot of tunable parameters.
 
 For example, `bench/bench.cpp` defines
@@ -84,4 +86,22 @@ i.e.
 cd script
 ./bench_single_thread.sh --read_ratio=20
 ./bench_multipe_thread.sh --read_ratio=20
+```
+
+## Formating the project
+
+Install `clang-format` to format your code.
+
+The project already provide you a `.clang-format` to specify the foramt.
+
+## Debugging
+
+You can uncomment the below lines to enable [ASAN](https://github.com/google/sanitizers/wiki/AddressSanitizer).
+
+It is a convenient tool for addressing memory problems.
+
+``` cmake
+# set(ASAN_OPTIONS "fast_unwind_on_fatal=1")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer -fsanitize-recover=address")
+
 ```
