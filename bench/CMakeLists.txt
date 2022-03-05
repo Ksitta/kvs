@@ -1,0 +1,6 @@
+file(GLOB BENCH_SRC ${PROJECT_SOURCE_DIR}/bench/*.cpp)
+foreach (BENCH ${BENCH_SRC})
+    get_filename_component(BENCH_NAME ${BENCH} NAME_WE)
+    add_executable(${BENCH_NAME} ${BENCH})
+    target_link_libraries(${BENCH_NAME} PRIVATE kvs_obj)
+endforeach()

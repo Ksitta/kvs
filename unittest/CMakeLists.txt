@@ -1,0 +1,6 @@
+file(GLOB UNITTEST_SRC ${PROJECT_SOURCE_DIR}/unittest/*.cpp)
+foreach (UNITTEST ${UNITTEST_SRC})
+    get_filename_component(UNITTEST_NAME ${UNITTEST} NAME_WE)
+    add_executable(${UNITTEST_NAME} ${UNITTEST})
+    target_link_libraries(${UNITTEST_NAME} PRIVATE kvs_obj)
+endforeach()
