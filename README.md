@@ -21,6 +21,8 @@ sudo ./bootstrap.sh
 To build the project
 
 ```
+mkdir build
+cd build
 # build it in Debug mode
 cmake -DCMAKE_BUILD_TYPE=Debug ..
 # or build it in Release mode for benchmarking
@@ -96,7 +98,7 @@ The project already provide you a `.clang-format` to specify the foramt.
 
 ## Debugging
 
-You can uncomment the below lines to enable [ASAN](https://github.com/google/sanitizers/wiki/AddressSanitizer).
+You can uncomment the below lines of `CMakeLists.txt` to enable [ASAN](https://github.com/google/sanitizers/wiki/AddressSanitizer).
 
 It is a convenient tool for addressing memory problems.
 
