@@ -26,7 +26,7 @@ cd build
 # build it in Debug mode
 cmake -DCMAKE_BUILD_TYPE=Debug ..
 # or build it in Release mode for benchmarking
-# cmake -DCMAKE_BUILD_TYPE=Release
+# cmake -DCMAKE_BUILD_TYPE=Release ..
 make -j
 ```
 
