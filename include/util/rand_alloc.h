@@ -68,7 +68,8 @@ public:
     kvs::IEngine::Key alloc_key(size_t size) override
     {
         CHECK_EQ(size, sizeof(uint64_t));
-        uint64_t r = rand() % max_key_;
+        DCHECK_GE(max_key_, 1);
+        uint64_t r = fast_pseudo_rand_int(0, max_key_ - 1);
         return Key((char *) &r, sizeof(uint64_t));
     }
     kvs::IEngine::Value alloc_value(size_t size) override
@@ -114,7 +115,7 @@ public:
     kvs::IEngine::Key alloc_key(size_t size) override
     {
         std::ignore = size;
-        return keys_[rand() % keys_.size()];
+        return keys_[fast_pseudo_rand_int(0, keys_.size() - 1)];
     }
     kvs::IEngine::Value alloc_value(size_t size) override
     {
@@ -123,7 +124,7 @@ public:
         {
             return gen_rand_value(size);
         }
-        return values_[rand() % values_.size()];
+        return values_[fast_pseudo_rand_int(0, values_.size() - 1)];
     }
 
 private:

@@ -91,7 +91,7 @@ inline std::ostream &operator<<(std::ostream &os, const TestCase &c)
 
 inline bool probability_yes(double prob)
 {
-    size_t r = rand() % 1000;
+    size_t r = fast_pseudo_rand_int(0, 1000 - 1);
     size_t okay = 1.0 * 1000 * prob;
     return r < okay;
 }
@@ -103,7 +103,7 @@ inline auto random_choose(
 {
     auto it = set.begin();
     size_t limit = std::min(set.size(), rand_limit);
-    auto adv = rand() % limit;
+    auto adv = fast_pseudo_rand_int(0, limit - 1);
     std::advance(it, adv);
     return *it;
 }
