@@ -11,10 +11,10 @@
 
 #include "conf.h"
 #include "engine.h"
-#include "test_util.h"
 #include "util/bench.h"
 #include "util/executor.h"
 #include "util/rand_alloc.h"
+#include "util/utils.h"
 
 using namespace kvs;
 using namespace bench;

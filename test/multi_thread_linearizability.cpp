@@ -10,7 +10,7 @@
 
 #include "engine.h"
 #include "glog/logging.h"
-#include "test_util.h"
+#include "util/utils.h"
 
 #define KV_CNT 1000
 #define TEST_CNT 100000
@@ -20,6 +20,7 @@
 #define CONFLICT_KEY 50
 
 using namespace kvs;
+using namespace bench;
 
 char v[9024];
 std::string key;
@@ -81,7 +82,7 @@ void test_thread_conflict(int id)
 
     for (int i = 0; i < TEST_CNT; ++i)
     {
-        if (rand_int(0, 100) <= 50)
+        if (fast_pseudo_rand_int(0, 100) <= 50)
         {
             tracer.start_read(id);
             auto ret = engine->get(key, value);
@@ -100,9 +101,7 @@ void test_thread_conflict(int id)
 
 int main()
 {
-    color_print(
-        "======================= multi thread test "
-        "============================");
+    LOG(INFO) << "======== multi thread test ===========";
 
     std::string engine_path = "./tmp_test";
 
@@ -128,7 +127,7 @@ int main()
         ths[i].join();
     }
 
-    color_print("trace generated to " + trace_file);
+    LOG(INFO) << "trace generated to " << trace_file;
 
     return 0;
 }

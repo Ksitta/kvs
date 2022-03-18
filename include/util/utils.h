@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <random>
 #include <string>
 
 #include "engine.h"
@@ -14,19 +15,62 @@ namespace bench
 using Key = kvs::IEngine::Key;
 using Value = kvs::IEngine::Value;
 
-inline void color_print(const std::string &s)
+// Notice: TLS object is created only once for each combination of type and
+// thread. Only use this when you prefer multiple callers share the same
+// instance.
+template <class T, class... Args>
+inline T &TLS(Args &&... args)
 {
-    printf("\033[1;32;40m%s\033[0m\n", s.c_str());
+    thread_local T _tls_item(std::forward<Args>(args)...);
+    return _tls_item;
 }
 
-inline unsigned long long asm_rdtsc(void)
+inline std::mt19937 &mt19937_generator()
 {
-    unsigned hi, lo;
-    __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
-    return ((unsigned long long) lo) | (((unsigned long long) hi) << 32);
+    return TLS<std::mt19937>();
 }
 
-thread_local unsigned int rand_seed = asm_rdtsc();
+inline uint64_t fast_pseudo_rand_int(uint64_t min, uint64_t max)
+{
+    std::uniform_int_distribution<uint64_t> dist(min, max);
+    return dist(mt19937_generator());
+}
+
+inline uint64_t fast_pseudo_rand_int(uint64_t max)
+{
+    return fast_pseudo_rand_int(0, max);
+}
+
+inline uint64_t fast_pseudo_rand_int()
+{
+    return fast_pseudo_rand_int(0, std::numeric_limits<uint64_t>::max());
+}
+
+/**
+ * @brief very fast, at the expense of greater state storage and sometimes less
+ * desirable spectral characteristics
+ *
+ * @return std::ranlux48_base&
+ */
+inline std::ranlux48_base &ranlux48_base_generator()
+{
+    return TLS<std::ranlux48_base>();
+}
+inline double fast_pseudo_rand_dbl(double min, double max)
+{
+    std::uniform_real_distribution<double> dist(min, max);
+    return dist(ranlux48_base_generator());
+}
+inline double fast_pseudo_rand_dbl(double max)
+{
+    return fast_pseudo_rand_dbl(0, max);
+}
+inline double fast_pseudo_rand_dbl()
+{
+    return fast_pseudo_rand_dbl(0, std::numeric_limits<double>::max());
+}
+
+thread_local unsigned int rand_seed = fast_pseudo_rand_int();
 inline void gen_random(char *s, const int len)
 {
     static const char alphanum[] =

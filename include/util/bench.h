@@ -108,12 +108,6 @@ inline auto random_choose(
     return *it;
 }
 
-inline double rand_dbl(double fMin, double fMax)
-{
-    double f = (double) rand() / RAND_MAX;
-    return fMin + f * (fMax - fMin);
-}
-
 struct OpConfig
 {
     Op op;
@@ -187,7 +181,7 @@ public:
             }
             else
             {
-                auto r = rand_dbl(0, 1);
+                auto r = fast_pseudo_rand_dbl(0, 1);
                 auto it = acc_prob_to_conf_.lower_bound(r);
                 if (it == acc_prob_to_conf_.end())
                 {
@@ -273,7 +267,7 @@ public:
                 }
                 double begin_range = (1 - visit_range_percent);
 
-                double begin_d = rand_dbl(0, begin_range);
+                double begin_d = fast_pseudo_rand_dbl(0, begin_range);
                 double range_percent = visit_range_percent;
                 double end_d = begin_d + range_percent;
 

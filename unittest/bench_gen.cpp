@@ -72,9 +72,12 @@ int main(int argc, char *argv[])
             // LOG(INFO) << "len: " << range_length << ", diff: " << diff
             //           << ", kv_size: " << kv.size();
         }
+        else if (t.op == Op::kNoOp)
+        {
+        }
         else
         {
-            CHECK(false);
+            CHECK(false) << "unknown op " << t.op;
         }
     }
     LOG(INFO) << "get_found_rate: " << 1.0 * get_found / get_nr
