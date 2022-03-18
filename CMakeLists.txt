@@ -23,7 +23,7 @@ file(GLOB_RECURSE KVS_PUBLIC_HEADER include/*)
 
 # source for the lib
 file(GLOB_RECURSE KVS_SOURCE src/*)
-add_library(kvs_obj OBJECT ${KVS_SOURCE})
+add_library(kvs_obj STATIC ${KVS_SOURCE})
 target_include_directories(kvs_obj PUBLIC ${KVS_INCLUDE_DIRECTORIES})
 target_include_directories(kvs_obj INTERFACE ${GLOG_INCLUDE_DIRS})
 target_link_libraries(kvs_obj INTERFACE pthread)
