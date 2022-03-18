@@ -70,6 +70,13 @@ inline double fast_pseudo_rand_dbl()
     return fast_pseudo_rand_dbl(0, std::numeric_limits<double>::max());
 }
 
+inline bool probability_yes(double prob)
+{
+    size_t r = fast_pseudo_rand_int(0, 1000 - 1);
+    size_t okay = 1.0 * 1000 * prob;
+    return r < okay;
+}
+
 thread_local unsigned int rand_seed = fast_pseudo_rand_int();
 inline void gen_random(char *s, const int len)
 {

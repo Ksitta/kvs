@@ -89,13 +89,6 @@ inline std::ostream &operator<<(std::ostream &os, const TestCase &c)
     return os;
 }
 
-inline bool probability_yes(double prob)
-{
-    size_t r = fast_pseudo_rand_int(0, 1000 - 1);
-    size_t okay = 1.0 * 1000 * prob;
-    return r < okay;
-}
-
 template <typename T>
 inline auto random_choose(
     const std::set<T> &set,
