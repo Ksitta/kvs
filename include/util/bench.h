@@ -65,6 +65,7 @@ inline std::ostream &operator<<(std::ostream &os, const Op &op)
     case Op::kNoOp:
     {
         os << "no-op";
+        break;
     }
     default:
         LOG(FATAL) << "Invalid op " << (int) op;
