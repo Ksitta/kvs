@@ -119,8 +119,8 @@ void bench_kv(IEngine::Pointer engine)
             size_t cur_idx = 0;
             while (remain_task_nr > 0)
             {
-                auto current_task_nr =
-                    std::min(remain_task_nr, FLAGS_execute_batch);
+                auto current_task_nr = std::min(int64_t(remain_task_nr),
+                                                int64_t(FLAGS_execute_batch));
 
                 executor.execute(test_case, cur_idx, current_task_nr);
 
