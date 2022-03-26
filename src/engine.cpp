@@ -2,11 +2,13 @@
 
 namespace kvs
 {
+
 Engine::Engine(const std::string &path, EngineOptions options)
+    : kv(path.c_str())
 {
     // TODO: your code here
-    std::ignore = path;
-    std::ignore = options;
+    // std::ignore = path;
+    // std::ignore = options;
 }
 
 Engine::~Engine()
@@ -17,28 +19,45 @@ Engine::~Engine()
 RetCode Engine::put(const Key &key, const Value &value)
 {
     // TODO: your code here
-    std::ignore = key;
-    std::ignore = value;
-    return kNotSupported;
+    // std::ignore = key;
+    // std::ignore = value;
+    lock.lock();
+    kv.put(key, value);
+    lock.unlock();
+    return kSucc;
 }
 RetCode Engine::remove(const Key &key)
 {
     // TODO: your code here
-    std::ignore = key;
-    return kNotSupported;
+    // std::ignore = key;
+    lock.lock();
+    bool ret = kv.del(key);
+    lock.unlock();
+    if (ret == false)
+    {
+        return kNotFound;
+    }
+    return kSucc;
 }
 
 RetCode Engine::get(const Key &key, Value &value)
 {
     // TODO: your code here
-    std::ignore = key;
-    std::ignore = value;
-    return kNotSupported;
+    // std::ignore = key;
+    // std::ignore = value;
+    lock.lock();
+    bool ret = kv.get(key, value);
+    lock.unlock();
+    if (ret == false)
+    {
+        return kNotFound;
+    }
+    return kSucc;
 }
 
 RetCode Engine::sync()
 {
-    return kNotSupported;
+    return kSucc;
 }
 
 RetCode Engine::visit(const Key &lower,

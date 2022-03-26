@@ -2,11 +2,13 @@
 #ifndef INCLUDE_ENGINE_H_
 #define INCLUDE_ENGINE_H_
 #include <functional>
+#include <mutex>
 #include <string>
 #include <vector>
 
 #include "conf.h"
 #include "interfaces.h"
+#include "kvstore.h"
 #include "options.h"
 
 namespace kvs
@@ -71,6 +73,8 @@ public:
     RetCode garbage_collect() override;
 
 private:
+    KVStore kv;
+    std::mutex lock;
 };
 
 }  // namespace kvs

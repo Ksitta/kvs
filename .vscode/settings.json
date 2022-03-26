@@ -1,5 +1,7 @@
 {
     "files.associations": {
+        "*.l": "bison",
+        "*.y": "lex",
         "cctype": "cpp",
         "clocale": "cpp",
         "cmath": "cpp",
@@ -53,7 +55,9 @@
         "cinttypes": "cpp",
         "typeinfo": "cpp",
         "bit": "cpp",
-        "set": "cpp"
+        "set": "cpp",
+        "list": "cpp",
+        "shared_mutex": "cpp"
     },
     "editor.formatOnSave": true
 }
