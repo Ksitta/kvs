@@ -13,9 +13,7 @@
 #include <vector>
 
 #include "MurmurHash3.h"
-#include "const.h"
-
-const uint32_t BFSIZE = 10240;
+#include "comm.h"
 
 class BloomFilter
 {
@@ -72,19 +70,8 @@ private:
     FILE *file;
 
 public:
-    struct KeyOffset
-    {
-        std::string key;
-        int offset;
-        int len;
-
-        KeyOffset(std::string &key, int offset, int len)
-            : key(key), offset(offset), len(len)
-        {
-        }
-    };
     int num;
-    int key_start;
+    int type;
     uint64_t timestamp;
     std::string dir;
     std::string _max;
@@ -93,56 +80,61 @@ public:
     BloomFilter bloomFilter;
     std::vector<KeyOffset> keypairs;
 
-    const int header_offset = FILE_HEADER;  // timestamp, BloomFilter, num
-
     SStable(std::string &dir) : dir(dir)
     {
-        file = fopen(dir.c_str(), "rb+");
+        file = fopen((dir + ".meta").c_str(), "rb");
         fread(&timestamp, 8, 1, file);
         fread(&num, 4, 1, file);
-        fread(bloomFilter.data, 1, BFSIZE, file);
-        int len;
-        int offset_len[2];
-        key_start = header_offset;
-        for (int i = 0; i < num; i++)
+        fread(&type, 4, 1, file);
+        if (type == 0)
         {
-            fread(&len, 4, 1, file);
-            std::string str;
-            str.resize(len);
-            fread((void *) str.data(), 1, len, file);
-            fread(offset_len, 4, 2, file);
-            keypairs.emplace_back(str, offset_len[0], offset_len[1]);
-            key_start += len + 12;
+            int len[2];
+            int pos = 0;
+            for (int i = 0; i < num; i++)
+            {
+                fread(len, 4, 2, file);
+                std::string str;
+                str.resize(len[0]);
+                fread((void *) str.data(), 1, len[0], file);
+                bloomFilter.put(str);
+                keypairs.emplace_back(str, pos, len[1]);
+                pos += len[1];
+            }
         }
-        for (int i = 0; i < num; i++)
+        else
         {
-            std::string val;
-            readfile(keypairs[i].offset, keypairs[i].len, val);
+            int len[3];
+            for (int i = 0; i < num; i++)
+            {
+                fread(len, 4, 3, file);
+                std::string str;
+                str.resize(len[0]);
+                fread((void *) str.data(), 1, len[0], file);
+                bloomFilter.put(str);
+                keypairs.emplace_back(str, len[1], len[2]);
+            }
         }
         _min = keypairs[0].key;
         _max = keypairs[keypairs.size() - 1].key;
+        fclose(file);
+        file = fopen((dir + ".data").c_str(), "rb");
     }
 
     SStable(std::string &dir,
             uint64_t timestamp,
             int num,
-            std::vector<std::pair<std::string, int>> *k_vsize)
-        : num(num), timestamp(timestamp), dir(dir)
+            int type,
+            std::vector<KeyOffset> &keypairs,
+            FILE *file)
+        : file(file),
+          num(num),
+          type(type),
+          timestamp(timestamp),
+          dir(dir),
+          keypairs(keypairs)
     {
-        file = fopen(dir.c_str(), "wb+");
-        int relative_offset = 0;
-        _min = (*k_vsize)[0].first;
-        _max = (*k_vsize)[num - 1].first;
-        key_start = header_offset;
-        for (int i = 0; i < num; ++i)
-        {
-            std::string &key = (*k_vsize)[i].first;
-            int length = (*k_vsize)[i].second;
-            bloomFilter.put(key);
-            keypairs.emplace_back(key, relative_offset, length);
-            relative_offset += length;
-            key_start += key.size() + 12;
-        }
+        _min = keypairs[0].key;
+        _max = keypairs[num - 1].key;
     }
 
     ~SStable()
@@ -150,42 +142,44 @@ public:
         fclose(file);
     }
 
-    void toFile(std::vector<std::string> *values)
+    void indextoFile()
     {
-        fseek(file, 0, SEEK_SET);
-        fwrite(&timestamp, 8, 1, file);
-        fwrite(&num, 4, 1, file);
-        fwrite(bloomFilter.data, 1, BFSIZE, file);
-        for (auto &pair : keypairs)
+        FILE *tmp = fopen((dir + ".meta").c_str(), "wb+");
+        fwrite(&timestamp, 8, 1, tmp);
+        fwrite(&num, 4, 1, tmp);
+        fwrite(&type, 4, 1, tmp);
+        if (type == 0)
         {
-            int len = pair.key.size();
-            fwrite(&len, 4, 1, file);
-            fwrite(pair.key.c_str(), 1, len, file);
-            fwrite(&pair.offset, 4, 2, file);
+            for (int i = 0; i < keypairs.size(); i++)
+            {
+                int len[2] = {keypairs[i].key.size(), keypairs[i].len};
+                fwrite(&len, 4, 2, tmp);
+                fwrite(keypairs[i].key.c_str(), 1, len[0], tmp);
+            }
         }
-        for (auto &value : *values)
+        else
         {
-            fwrite(value.c_str(), 1, value.size(), file);
+            for (int i = 0; i < keypairs.size(); i++)
+            {
+                int len[3] = {keypairs[i].key.size(),
+                              keypairs[i].offset,
+                              keypairs[i].len};
+                fwrite(&len, 4, 3, tmp);
+                fwrite(keypairs[i].key.c_str(), 1, len[0], tmp);
+            }
         }
-        fflush(file);
+        fclose(tmp);
     }
 
-    void toFile(std::list<std::string> *values)
+    void toFile(std::vector<std::string> &values)
     {
-        fseek(file, 0, SEEK_SET);
-        fwrite(&timestamp, 8, 1, file);
-        fwrite(&num, 4, 1, file);
-        fwrite(bloomFilter.data, 1, BFSIZE, file);
-        for (auto &pair : keypairs)
+        // index
+        indextoFile();
+        // value
+        file = fopen((dir + ".data").c_str(), "wb+");
+        for (int i = 0; i < values.size(); i++)
         {
-            int len = pair.key.size();
-            fwrite(&len, 4, 1, file);
-            fwrite(pair.key.c_str(), 1, len, file);
-            fwrite(&pair.offset, 4, 2, file);
-        }
-        for (auto &value : *values)
-        {
-            fwrite(value.c_str(), 1, value.size(), file);
+            fwrite(values[i].c_str(), 1, values[i].size(), file);
         }
         fflush(file);
     }
@@ -222,7 +216,7 @@ public:
     //从文件中获取value offset处的value
     void readfile(int offset, int len, std::string &value)
     {
-        fseek(file, offset + key_start, SEEK_SET);
+        fseek(file, offset, SEEK_SET);
         value.resize(len);
         fread((void *) value.data(), 1, len, file);
     }
@@ -234,13 +228,27 @@ public:
 
     void get_values(std::vector<std::string> &values)
     {
-        fseek(file, this->key_start, SEEK_SET);
-        for (const auto &item : keypairs)
+        if (type == 0)
         {
-            std::string value;
-            value.resize(item.len);
-            fread((void *) value.data(), 1, item.len, file);
-            values.emplace_back(value);
+            fseek(file, 0, SEEK_SET);
+            for (const auto &item : keypairs)
+            {
+                std::string value;
+                value.resize(item.len);
+                fread((void *) value.data(), 1, item.len, file);
+                values.emplace_back(value);
+            }
+        }
+        else
+        {
+            for (const auto &item : keypairs)
+            {
+                std::string value;
+                value.resize(item.len);
+                fseek(file, item.offset, SEEK_SET);
+                fread((void *) value.data(), 1, item.len, file);
+                values.emplace_back(value);
+            }
         }
     }
 };

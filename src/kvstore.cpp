@@ -4,8 +4,6 @@
 #include <cassert>
 #include <queue>
 
-#include "const.h"
-
 unsigned int string_to_unsigned_int(std::string str)
 {
     unsigned int result(0);
@@ -36,7 +34,10 @@ KVStore::KVStore(const std::string &dir) : level(0), index(0), timestamp(0)
     if (!utils::dirExists(dir))
     {
         utils::mkdir(dir.c_str());
-        memtab = new MemTable();
+        auto path = getpath(0);
+        utils::mkdir(path.c_str());
+        std::string name = path + "/" + std::to_string(index);
+        memtab = new MemTable(name);
         auto add_ss = new std::list<SStable *>;
         sstables.push_back(*add_ss);
         timestamp++;
@@ -75,20 +76,33 @@ KVStore::KVStore(const std::string &dir) : level(0), index(0), timestamp(0)
                 level = tmp_level;
             for (const auto &sst : sub)
             {
-                std::string filename = dir + "/" + item + "/" + sst;
+                if (sst.substr(sst.size() - 5) != ".meta")
+                {
+                    continue;
+                }
+                std::string filename =
+                    dir + "/" + item + "/" + sst.substr(0, sst.size() - 5);
                 SStable *sstable = new SStable(filename);
                 sstables[tmp_level].push_back(sstable);
                 uint32_t tmp_index =
-                    string_to_unsigned_int(sst.substr(0, sst.size() - 4));
+                    string_to_unsigned_int(sst.substr(0, sst.size() - 5));
                 if (tmp_index > index)
                     index = tmp_index;
                 if (sstable->timestamp > timestamp)
                     timestamp = sstable->timestamp;
             }
         }
-        memtab = new MemTable();
         index++;
         timestamp++;
+
+        auto path = getpath(0);
+        if (!utils::dirExists(path))
+        {
+            utils::mkdir(path.c_str());
+        }
+
+        std::string name = path + "/" + std::to_string(index);
+        memtab = new MemTable(name);
     }
 }
 
@@ -200,13 +214,12 @@ void KVStore::MemTableToSSTable()
     {
         return;
     }
-    std::vector<std::pair<std::string, int>> k_vsize;  //记录所有的key值
-    std::vector<std::string> values;
-    Node *keypairs = memtab->getkeypairs();  //所有的key-val对
+
+    std::vector<KeyOffset> keyoffsets;
+    Node *keypairs = memtab->getkeypairs();
     while (keypairs)
     {
-        k_vsize.emplace_back(keypairs->key, keypairs->val.size());
-        values.push_back(keypairs->val);
+        keyoffsets.push_back(keypairs->keypair);
         keypairs = keypairs->right;
     }
 
@@ -216,15 +229,17 @@ void KVStore::MemTableToSSTable()
         utils::mkdir(path.c_str());
     }
 
-    std::string name = path + "/" + std::to_string(index) + ".sst";
-    SStable *_sstable = new SStable(name, timestamp, memtab->size(), &k_vsize);
+    SStable *_sstable = new SStable(
+        memtab->dir, timestamp, memtab->size(), 1, keyoffsets, memtab->file);
 
     sstables[0].push_back(_sstable);
-    _sstable->toFile(&values);
+    _sstable->indextoFile();
 
     index++;
     timestamp++;
-    memtab = new MemTable();
+    delete memtab;
+    std::string name = path + "/" + std::to_string(index);
+    memtab = new MemTable(name);
     // 如果当前第level层已经满了 --> 触发compaction
     int des = 0;
     while (sstables[des].size() > (2 << (des)))
@@ -291,63 +306,13 @@ uint64_t KVStore::merge(std::vector<SStable *> &needMerge,
         }
     }
     return timestamp;
-    // int pos = 0;
-    // auto &merge_keys = needMerge[0]->get_keys();
-    // int length_a = merge_keys.size();
-    // uint64_t timestamp_a = needMerge[0]->timestamp;
-    // std::vector<std::string> merge_vals(length_a);
-    // needMerge[0]->get_values(merge_vals);
-    // std::sort(needMerge.begin() + 1, needMerge.end(), );
-    // uint64_t timestamp = timestamp_a;
-    // for (int i = 1; i < needMerge.size(); i++) {
-    //     auto &another_keys = needMerge[0]->get_keys();
-    //     int length_b = another_keys.size();
-    //     std::vector<std::string> another_vals(length_b);
-    //     needMerge[i]->get_values(merge_vals);
-    //     int j = 0;
-    //     uint64_t timestamp_b = needMerge[i]->timestamp;
-    //     if (timestamp_b > timestamp) {
-    //         timestamp = timestamp_b;
-    //     }
-    //     while (pos != length_a && j != length_b) {
-    //         if (merge_keys[pos].key < another_keys[j].key) {
-    //             keys.push_back(merge_keys[pos].key);
-    //             values.push_back(merge_vals[pos]);
-    //             pos++;
-    //         } else if (merge_keys[pos].key > another_keys[j].key) {
-    //             keys.push_back(another_keys[j].key);
-    //             values.push_back(another_vals[j]);
-    //             j++;
-    //         } else {
-    //             if (timestamp_a > timestamp_b) {
-    //                 keys.push_back(merge_keys[pos].key);
-    //                 values.push_back(merge_vals[pos]);
-    //                 pos++;
-    //                 j++;
-    //             } else {
-    //                 keys.push_back(another_keys[j].key);
-    //                 values.push_back(another_vals[j]);
-    //                 pos++;
-    //                 j++;
-    //             }
-    //         }
-    //     }
-    //     if (pos == length_a) {
-    //         while (j != length_b) {
-    //             keys.push_back(another_keys[j].key);
-    //             values.push_back(another_vals[j]);
-    //             j++;
-    //         }
-    //     }
-    // }
-    // return timestamp;
 }
 
 void KVStore::allocToSStable(std::vector<std::string> &keys,
                              std::vector<std::string> &vals,
                              int des,
                              uint64_t stamp,
-                             std::string path)
+                             std::string &path)
 {
     // find pos to insert
     auto insertIterator = sstables[des].begin();
@@ -357,44 +322,40 @@ void KVStore::allocToSStable(std::vector<std::string> &keys,
             break;
     }
     uint64_t filesize = FILE_HEADER;
-    std::vector<std::pair<std::string, int>> writeKeys;
+    std::vector<KeyOffset> writeKeys;
     std::vector<std::string> writeValues;
     auto key_num = keys.size();
+    int offset = 0;
     for (int i = 0; i < key_num; ++i)
     {
-        if (filesize + 12 + keys[i].size() + vals[i].size() > MAXSIZE)
+        if (filesize + 8 + keys[i].size() + vals[i].size() > MAXSIZE)
         {
-            std::string filename = path + "/" + std::to_string(index) + ".sst";
-            auto sst =
-                new SStable(filename, stamp, writeKeys.size(), &writeKeys);
+            std::string filename = path + "/" + std::to_string(index);
+            auto sst = new SStable(
+                filename, stamp, writeKeys.size(), 0, writeKeys, nullptr);
             sstables[des].insert(insertIterator, sst);
-            sst->toFile(&writeValues);
+            sst->toFile(writeValues);
             writeKeys.clear();
             writeValues.clear();
             index++;
             filesize = FILE_HEADER;
+            offset = 0;
         }
-        writeKeys.emplace_back(keys[i], vals[i].size());
+        writeKeys.emplace_back(keys[i], offset, vals[i].size());
         writeValues.push_back(vals[i]);
-        filesize += 12 + keys[i].size() + vals[i].size();
-        if (i != 0)
-        {
-            assert(keys[i] != keys[i - 1]);
-        }
+        offset += vals[i].size();
+        filesize += 8 + keys[i].size() + vals[i].size();
     }
-    if (filesize > FILE_HEADER)
-    {
-        std::string filename = path + "/" + std::to_string(index) + ".sst";
-        auto sst = new SStable(filename, stamp, writeKeys.size(), &writeKeys);
-        sstables[des].insert(insertIterator, sst);
-        sst->toFile(&writeValues);
-        index++;
-    }
+    std::string filename = path + "/" + std::to_string(index);
+    auto sst =
+        new SStable(filename, stamp, writeKeys.size(), 0, writeKeys, nullptr);
+    sstables[des].insert(insertIterator, sst);
+    sst->toFile(writeValues);
+    index++;
 }
 
 void KVStore::compaction(int des)
 {
-    // max_des=max(max_des,des);
     std::vector<SStable *> needMerge;  //所有需要合并的sst
     std::list<SStable *> &lastLevel = sstables[des - 1];  //合并层
     std::string min_key = (*lastLevel.begin())->_min;
@@ -463,7 +424,8 @@ void KVStore::compaction(int des)
         auto thisSSTable = *thisIterator;
         tmp = thisSSTable->dir;
         delete thisSSTable;
-        assert(utils::rmfile(tmp.c_str()) == 0);
+        assert(utils::rmfile((tmp + ".data").c_str()) == 0);
+        assert(utils::rmfile((tmp + ".meta").c_str()) == 0);
         desLevel.erase(thisIterator);
     }
     allocToSStable(keys, values, des, stamp, targetPath);
@@ -473,7 +435,8 @@ void KVStore::compaction(int des)
         {
             tmp = sst->dir;
             delete sst;
-            assert(utils::rmfile(tmp.c_str()) == 0);
+            assert(utils::rmfile((tmp + ".data").c_str()) == 0);
+            assert(utils::rmfile((tmp + ".meta").c_str()) == 0);
         }
         sstables[des - 1].clear();
     }
@@ -485,7 +448,8 @@ void KVStore::compaction(int des)
             SStable *sst = sstables[des - 1].front();
             tmp = sst->dir;
             delete sst;
-            assert(utils::rmfile(tmp.c_str()) == 0);
+            assert(utils::rmfile((tmp + ".data").c_str()) == 0);
+            assert(utils::rmfile((tmp + ".meta").c_str()) == 0);
             sstables[des - 1].pop_front();
         }
     }

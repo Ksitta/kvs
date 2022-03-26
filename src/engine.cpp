@@ -6,6 +6,7 @@ namespace kvs
 Engine::Engine(const std::string &path, EngineOptions options)
     : kv(path.c_str())
 {
+    // std::cout << "created" << std::endl;
     // TODO: your code here
     // std::ignore = path;
     // std::ignore = options;
@@ -21,6 +22,7 @@ RetCode Engine::put(const Key &key, const Value &value)
     // TODO: your code here
     // std::ignore = key;
     // std::ignore = value;
+    // std::cout << "put " << key << " " << value << std::endl;
     lock.lock();
     kv.put(key, value);
     lock.unlock();
@@ -30,6 +32,7 @@ RetCode Engine::remove(const Key &key)
 {
     // TODO: your code here
     // std::ignore = key;
+    // std::cout << "remove " << key << " " << std::endl;
     lock.lock();
     bool ret = kv.del(key);
     lock.unlock();
@@ -45,6 +48,7 @@ RetCode Engine::get(const Key &key, Value &value)
     // TODO: your code here
     // std::ignore = key;
     // std::ignore = value;
+    // std::cout << "get " << key << std::endl;
     lock.lock();
     bool ret = kv.get(key, value);
     lock.unlock();

@@ -8,6 +8,7 @@
 #include "MemTable.h"
 #include "MurmurHash3.h"
 #include "SStable.h"
+#include "comm.h"
 #include "utils.h"
 
 class KVStore
@@ -74,5 +75,5 @@ public:
                         std::vector<std::string> &vals,
                         int des,
                         uint64_t stamp,
-                        std::string path);
+                        std::string &path);
 };
