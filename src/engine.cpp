@@ -14,6 +14,7 @@ Engine::Engine(const std::string &path, EngineOptions options)
 
 Engine::~Engine()
 {
+    // std::cout << "destroyed" << std::endl;
     // TODO: your code here
 }
 

@@ -17,9 +17,9 @@ private:
     std::string dir;
     MemTable *memtab;
     std::vector<std::list<SStable *>> sstables;
-    uint64_t timestamp;
     int level;
     int index;
+    uint64_t timestamp;
 
     struct prinode
     {

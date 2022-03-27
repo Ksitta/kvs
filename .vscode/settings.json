@@ -59,5 +59,6 @@
         "list": "cpp",
         "shared_mutex": "cpp"
     },
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
 }

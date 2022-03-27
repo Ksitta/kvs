@@ -31,13 +31,16 @@ unsigned int string_to_unsigned_int(std::string str)
 KVStore::KVStore(const std::string &dir) : level(0), index(0), timestamp(0)
 {
     this->dir = dir;
+    FILE *log = nullptr;
     if (!utils::dirExists(dir))
     {
         utils::mkdir(dir.c_str());
         auto path = getpath(0);
         utils::mkdir(path.c_str());
+        index++;
         std::string name = path + "/" + std::to_string(index);
-        memtab = new MemTable(name);
+        log = fopen((dir + "/mem.log").c_str(), "wb+");
+        memtab = new MemTable(name, log);
         auto add_ss = new std::list<SStable *>;
         sstables.push_back(*add_ss);
         timestamp++;
@@ -66,28 +69,39 @@ KVStore::KVStore(const std::string &dir) : level(0), index(0), timestamp(0)
             auto add_ss = new std::list<SStable *>;
             sstables.push_back(*add_ss);
         }
-
+        bool recover = false;
+        std::string rec;
         for (const auto &item : ret)
         {  // item
             std::vector<std::string> sub;
-            utils::scanDir(dir + "/" + item, sub);
+            if(utils::scanDir(dir + "/" + item, sub) == -1){
+                continue;
+            }
             uint32_t tmp_level = string_to_unsigned_int(item.substr(6));
             if (tmp_level > level)
                 level = tmp_level;
             for (const auto &sst : sub)
             {
-                if (sst.substr(sst.size() - 5) != ".meta")
+                if (sst.substr(sst.size() - 5) != ".data")
                 {
                     continue;
                 }
                 std::string filename =
                     dir + "/" + item + "/" + sst.substr(0, sst.size() - 5);
-                SStable *sstable = new SStable(filename);
-                sstables[tmp_level].push_back(sstable);
                 uint32_t tmp_index =
                     string_to_unsigned_int(sst.substr(0, sst.size() - 5));
                 if (tmp_index > index)
+                {
                     index = tmp_index;
+                }
+                if (!utils::exist(filename + ".meta"))
+                {
+                    recover = true;
+                    rec = filename;
+                    continue;
+                }
+                SStable *sstable = new SStable(filename);
+                sstables[tmp_level].push_back(sstable);
                 if (sstable->timestamp > timestamp)
                     timestamp = sstable->timestamp;
             }
@@ -100,9 +114,18 @@ KVStore::KVStore(const std::string &dir) : level(0), index(0), timestamp(0)
         {
             utils::mkdir(path.c_str());
         }
-
-        std::string name = path + "/" + std::to_string(index);
-        memtab = new MemTable(name);
+        std::string name;
+        if (recover)
+        {
+            name = rec;
+            log = fopen((dir + "/mem.log").c_str(), "rb+");
+        }
+        else
+        {
+            name = path + "/" + std::to_string(index);
+            log = fopen((dir + "/mem.log").c_str(), "wb+");
+        }
+        memtab = new MemTable(name, log);
     }
 }
 
@@ -212,6 +235,10 @@ void KVStore::MemTableToSSTable()
 {
     if (memtab->size() == 0)
     {
+        fclose(memtab->log);
+        utils::rmfile((dir + "/mem.log").c_str());
+        fclose(memtab->file);
+        utils::rmfile((memtab->dir + ".data").c_str());
         return;
     }
 
@@ -237,9 +264,12 @@ void KVStore::MemTableToSSTable()
 
     index++;
     timestamp++;
+    fclose(memtab->log);
+    utils::rmfile((dir + "/mem.log").c_str());
     delete memtab;
     std::string name = path + "/" + std::to_string(index);
-    memtab = new MemTable(name);
+    FILE *log = fopen((dir + "/mem.log").c_str(), "wb+");
+    memtab = new MemTable(name, log);
     // 如果当前第level层已经满了 --> 触发compaction
     int des = 0;
     while (sstables[des].size() > (2 << (des)))
