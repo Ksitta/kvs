@@ -80,6 +80,20 @@ public:
     BloomFilter bloomFilter;
     std::vector<KeyOffset> keypairs;
 
+    class Compare
+    {
+    public:
+        bool operator()(const SStable *&a, const SStable *&b)
+        {
+            return a->timestamp < b->timestamp;
+        }
+    };
+
+    static bool comp(SStable *a, SStable *b)
+    {
+        return a->timestamp < b->timestamp;
+    }
+
     SStable(std::string &dir) : dir(dir)
     {
         file = fopen((dir + ".meta").c_str(), "rb");
@@ -142,7 +156,7 @@ public:
         fclose(file);
     }
 
-    void indextoFile()
+    void indextoFile() const
     {
         FILE *tmp = fopen((dir + ".meta").c_str(), "wb+");
         fwrite(&timestamp, 8, 1, tmp);
@@ -184,7 +198,7 @@ public:
         fflush(file);
     }
 
-    bool get(const std::string &key, std::string &value)
+    bool get(const std::string &key, std::string &value) const
     {
         int left = 0;
         int right = keypairs.size();
@@ -214,7 +228,7 @@ public:
     }
 
     //从文件中获取value offset处的value
-    void readfile(int offset, int len, std::string &value)
+    void readfile(int offset, int len, std::string &value) const
     {
         fseek(file, offset, SEEK_SET);
         value.resize(len);
@@ -226,7 +240,7 @@ public:
         return this->keypairs;
     }
 
-    void get_values(std::vector<std::string> &values)
+    void get_values(std::vector<std::string> &values) const
     {
         if (type == 0)
         {

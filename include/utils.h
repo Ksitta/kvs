@@ -12,7 +12,7 @@
 namespace utils
 {
 
-static inline bool exist(std::string path)
+static inline bool exist(const std::string &path)
 {
     return (::access(path.c_str(), 0) == 0);
 }
@@ -22,7 +22,7 @@ static inline bool exist(std::string path)
  * @param path directory to be checked.
  * @return ture if directory exists, false otherwise.
  */
-static inline bool dirExists(std::string path)
+static inline bool dirExists(const std::string &path)
 {
     struct stat st;
     int ret = stat(path.c_str(), &st);
@@ -35,7 +35,7 @@ static inline bool dirExists(std::string path)
  * @param ret all files name in directory.
  * @return files number.
  */
-static inline int scanDir(std::string path, std::vector<std::string> &ret)
+static inline int scanDir(const std::string &path, std::vector<std::string> &ret)
 {
     DIR *dir;
     struct dirent *rent;

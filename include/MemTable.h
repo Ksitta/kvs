@@ -7,13 +7,11 @@
 
 #include "comm.h"
 
-const int MAXSIZE = 1 << 21;  // 2MB
-
 struct Node
 {
     Node *right, *down;  // skiplist
     KeyOffset keypair;
-    Node(Node *right, Node *down, std::string key, int offset, int len)
+    Node(Node *right, Node *down, const std::string &key, int offset, int len)
         : right(right), down(down), keypair(key, offset, len)
     {
     }
@@ -35,7 +33,7 @@ public:
     FILE *log;
     std::string dir;
 
-    MemTable(std::string &dir, FILE *log) : log(log), dir(dir)
+    MemTable(const std::string &dir, FILE *log) : log(log), dir(dir)
     {
         file = fopen((dir + ".data").c_str(), "wb+");
         head = new Node();
@@ -67,7 +65,7 @@ public:
         return entry_size;
     }
 
-    bool get(const std::string &key, std::string &value)
+    bool get(const std::string &key, std::string &value) const
     {
         Node *pos = head;
         while (pos)

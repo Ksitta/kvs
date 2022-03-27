@@ -5,6 +5,7 @@
 
 const int FILE_HEADER = 16;
 const int BFSIZE = 10240;
+const int MAXSIZE = 1 << 21;  // 2MB
 
 struct KeyOffset
 {
@@ -12,7 +13,7 @@ struct KeyOffset
     int offset;
     int len;
 
-    KeyOffset(std::string &key, int offset, int len)
+    KeyOffset(const std::string &key, int offset, int len)
         : key(key), offset(offset), len(len)
     {
     }

@@ -2,7 +2,7 @@
 #ifndef INCLUDE_ENGINE_H_
 #define INCLUDE_ENGINE_H_
 #include <functional>
-#include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <vector>
 
@@ -74,7 +74,7 @@ public:
 
 private:
     KVStore kv;
-    std::mutex lock;
+    std::shared_mutex lock;
 };
 
 }  // namespace kvs

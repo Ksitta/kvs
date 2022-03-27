@@ -1,23 +1,18 @@
 #include "kvstore.h"
 
-#include <algorithm>
-#include <cassert>
-#include <queue>
-
-unsigned int string_to_unsigned_int(std::string str)
+int string_to_unsigned_int(const std::string &str)
 {
-    unsigned int result(0);
-    //从字符串首位读取到末位（下标由0到str.size() - 1）
+    int result(0);
     for (int i = str.size() - 1; i >= 0; i--)
     {
-        unsigned int temp(0), k = str.size() - i - 1;
-        //判断是否为数字
+        int temp(0), k = str.size() - i - 1;
         if (isdigit(str[i]))
         {
-            //求出数字与零相对位置
             temp = str[i] - '0';
             while (k--)
+            {
                 temp *= 10;
+            }
             result += temp;
         }
         else
@@ -74,7 +69,8 @@ KVStore::KVStore(const std::string &dir) : level(0), index(0), timestamp(0)
         for (const auto &item : ret)
         {  // item
             std::vector<std::string> sub;
-            if(utils::scanDir(dir + "/" + item, sub) == -1){
+            if (utils::scanDir(dir + "/" + item, sub) == -1)
+            {
                 continue;
             }
             uint32_t tmp_level = string_to_unsigned_int(item.substr(6));
@@ -126,6 +122,46 @@ KVStore::KVStore(const std::string &dir) : level(0), index(0), timestamp(0)
             log = fopen((dir + "/mem.log").c_str(), "wb+");
         }
         memtab = new MemTable(name, log);
+        for (int i = sstables.size() - 1; i >= 0; i--)
+        {
+            for (auto each : sstables[i])
+            {
+                auto &each_key = each->get_keys();
+                for (auto key : each_key)
+                {
+                    if (key.len)
+                    {
+                        keys.insert(key.key);
+                    }
+                    else
+                    {
+                        keys.erase(key.key);
+                    }
+                }
+            }
+        }
+        // std::sort(sstables[0].begin(), sstables[0].end(), SStable::comp);
+        for (auto each : sstables[0])
+        {
+            auto &each_key = each->get_keys();
+            for (auto key : each_key)
+            {
+                keys.insert(key.key);
+            }
+        }
+        auto mem_key = memtab->getkeypairs();
+        while (mem_key)
+        {
+            if (mem_key->keypair.len)
+            {
+                keys.insert(mem_key->keypair.key);
+            }
+            else
+            {
+                keys.erase(mem_key->keypair.key);
+            }
+            mem_key = mem_key->right;
+        }
     }
 }
 
@@ -147,6 +183,14 @@ KVStore::~KVStore()
 
 void KVStore::put(const std::string &key, const std::string &s)
 {
+    if (s.size() == 0)
+    {
+        keys.erase(key);
+    }
+    else
+    {
+        keys.insert(key);
+    }
     if (!memtab->put(key, s))
     {
         MemTableToSSTable();
@@ -154,14 +198,14 @@ void KVStore::put(const std::string &key, const std::string &s)
     }
 }
 
-bool KVStore::get(const std::string &key, std::string &value)
+bool KVStore::get(const std::string &key, std::string &value) const
 {
     std::string raw = value;
     bool find = false;
     bool ret = memtab->get(key, raw);
     if (ret)
     {
-        if (raw == "")
+        if (raw.size() == 0)
         {
             return false;
         }
@@ -195,7 +239,7 @@ bool KVStore::get(const std::string &key, std::string &value)
 
     if (find)
     {
-        if (raw == "")
+        if (raw.size() == 0)
         {
             return false;
         }
@@ -216,7 +260,7 @@ bool KVStore::get(const std::string &key, std::string &value)
                     ret = sst->get(key, raw);
                     if (ret)
                     {
-                        if (raw == "")
+                        if (raw.size() == 0)
                         {
                             return false;
                         }

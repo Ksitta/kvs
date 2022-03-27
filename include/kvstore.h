@@ -1,8 +1,10 @@
 #pragma once
 
+#include <algorithm>
+#include <cassert>
 #include <list>
-#include <map>
 #include <queue>
+#include <set>
 #include <string>
 
 #include "MemTable.h"
@@ -21,23 +23,13 @@ private:
     int index;
     uint64_t timestamp;
 
-    struct prinode
-    {
-        uint64_t stamp;
-        int pos;
-
-        bool operator<(prinode b) const
-        {
-            return stamp > b.stamp;  //结构体中，key小的优先级高
-        }
-    };
-
 public:
+    std::set<std::string> keys;
     KVStore(const std::string &dir);
 
     ~KVStore();
 
-    inline std::string getpath(int n)
+    inline std::string getpath(int n) const
     {
         std::string path = dir + "/level_" + std::to_string(n);
         return path;
@@ -45,7 +37,7 @@ public:
 
     void put(const std::string &key, const std::string &s);
 
-    bool get(const std::string &key, std::string &value);
+    bool get(const std::string &key, std::string &value) const;
 
     inline bool del(const std::string &key)
     {
