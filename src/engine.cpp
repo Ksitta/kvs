@@ -50,9 +50,9 @@ RetCode Engine::get(const Key &key, Value &value)
     // std::ignore = key;
     // std::ignore = value;
     // std::cout << "get " << key << std::endl;
-    lock.lock_shared();
+    lock.lock();
     bool ret = kv.get(key, value);
-    lock.unlock_shared();
+    lock.unlock();
     if (ret == false)
     {
         return kNotFound;
@@ -73,7 +73,7 @@ RetCode Engine::visit(const Key &lower,
     // std::ignore = lower;
     // std::ignore = upper;
     // std::ignore = visitor;
-    lock.lock_shared();
+    lock.lock();
     auto start = kv.keys.begin();
     auto end = kv.keys.end();
     if (upper < lower)
@@ -91,12 +91,12 @@ RetCode Engine::visit(const Key &lower,
     for (; start != end; start++)
     {
         std::string value;
-        if (kv.get(*start, value) == kSucc)
+        if (kv.get(*start, value))
         {
             visitor(*start, value);
         }
     }
-    lock.unlock_shared();
+    lock.unlock();
     return kSucc;
 }
 
