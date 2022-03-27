@@ -2,18 +2,15 @@
 
 int string_to_unsigned_int(const std::string &str)
 {
-    int result(0);
+    int result = 0;
+    int temp = 1;
     for (int i = str.size() - 1; i >= 0; i--)
     {
-        int temp(0), k = str.size() - i - 1;
+        int k = str.size() - i - 1;
         if (isdigit(str[i]))
         {
-            temp = str[i] - '0';
-            while (k--)
-            {
-                temp *= 10;
-            }
-            result += temp;
+            result += temp * (str[i] - '0');
+            temp *= 10;
         }
         else
         {
@@ -39,7 +36,6 @@ KVStore::KVStore(const std::string &dir) : level(0), index(0), timestamp(0)
         auto add_ss = new std::list<SStable *>;
         sstables.push_back(*add_ss);
         timestamp++;
-        index++;
     }
     else
     {
