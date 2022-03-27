@@ -1,11 +1,11 @@
 #ifndef __SSTABLE_H__
 #define __SSTABLE_H__
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <list>
@@ -18,11 +18,10 @@
 class BloomFilter
 {
 public:
-    char data[BFSIZE];
+    char data[BFSIZE] = {0};
 
     BloomFilter()
     {
-        memset(data, 0, BFSIZE);
     }
 
     void put(std::string &key)

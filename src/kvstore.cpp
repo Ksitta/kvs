@@ -122,7 +122,7 @@ KVStore::KVStore(const std::string &dir) : level(0), index(0), timestamp(0)
             log = fopen((dir + "/mem.log").c_str(), "wb+");
         }
         memtab = new MemTable(name, log);
-        for (int i = sstables.size() - 1; i >= 0; i--)
+        for (int i = sstables.size() - 1; i > 0; i--)
         {
             for (auto each : sstables[i])
             {
@@ -131,11 +131,11 @@ KVStore::KVStore(const std::string &dir) : level(0), index(0), timestamp(0)
                 {
                     if (key.len)
                     {
-                        keys.insert(key.key);
+                        all_keys.insert(key.key);
                     }
                     else
                     {
-                        keys.erase(key.key);
+                        all_keys.erase(key.key);
                     }
                 }
             }
@@ -144,9 +144,9 @@ KVStore::KVStore(const std::string &dir) : level(0), index(0), timestamp(0)
         for (auto each : sstables[0])
         {
             auto &each_key = each->get_keys();
-            for (auto key : each_key)
+            for (auto &key : each_key)
             {
-                keys.insert(key.key);
+                all_keys.insert(key.key);
             }
         }
         auto mem_key = memtab->getkeypairs();
@@ -154,11 +154,11 @@ KVStore::KVStore(const std::string &dir) : level(0), index(0), timestamp(0)
         {
             if (mem_key->keypair.len)
             {
-                keys.insert(mem_key->keypair.key);
+                all_keys.insert(mem_key->keypair.key);
             }
             else
             {
-                keys.erase(mem_key->keypair.key);
+                all_keys.erase(mem_key->keypair.key);
             }
             mem_key = mem_key->right;
         }
@@ -185,11 +185,11 @@ void KVStore::put(const std::string &key, const std::string &s)
 {
     if (s.size() == 0)
     {
-        keys.erase(key);
+        all_keys.erase(key);
     }
     else
     {
-        keys.insert(key);
+        all_keys.insert(key);
     }
     if (!memtab->put(key, s))
     {
@@ -224,15 +224,15 @@ bool KVStore::get(const std::string &key, std::string &value) const
         {
             if (max_stamp < (*s)->timestamp)
             {
-                if ((*s)->bloomFilter.test(key))
+                // if ((*s)->bloomFilter.test(key))
+                // {
+                ret = (*s)->get(key, raw);
+                if (ret)
                 {
-                    ret = (*s)->get(key, raw);
-                    if (ret)
-                    {
-                        max_stamp = (*s)->timestamp;
-                        find = true;
-                    }
+                    max_stamp = (*s)->timestamp;
+                    find = true;
                 }
+                // }
             }
         }
     }
@@ -498,8 +498,8 @@ void KVStore::compaction(int des)
         auto thisSSTable = *thisIterator;
         tmp = thisSSTable->dir;
         delete thisSSTable;
-        assert(utils::rmfile((tmp + ".data").c_str()) == 0);
-        assert(utils::rmfile((tmp + ".meta").c_str()) == 0);
+        utils::rmfile((tmp + ".data").c_str());
+        utils::rmfile((tmp + ".meta").c_str());
         desLevel.erase(thisIterator);
     }
     allocToSStable(keys, values, des, stamp, targetPath);
@@ -509,8 +509,8 @@ void KVStore::compaction(int des)
         {
             tmp = sst->dir;
             delete sst;
-            assert(utils::rmfile((tmp + ".data").c_str()) == 0);
-            assert(utils::rmfile((tmp + ".meta").c_str()) == 0);
+            utils::rmfile((tmp + ".data").c_str());
+            utils::rmfile((tmp + ".meta").c_str());
         }
         sstables[des - 1].clear();
     }
@@ -522,8 +522,8 @@ void KVStore::compaction(int des)
             SStable *sst = sstables[des - 1].front();
             tmp = sst->dir;
             delete sst;
-            assert(utils::rmfile((tmp + ".data").c_str()) == 0);
-            assert(utils::rmfile((tmp + ".meta").c_str()) == 0);
+            utils::rmfile((tmp + ".data").c_str());
+            utils::rmfile((tmp + ".meta").c_str());
             sstables[des - 1].pop_front();
         }
     }

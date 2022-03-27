@@ -74,19 +74,19 @@ RetCode Engine::visit(const Key &lower,
     // std::ignore = upper;
     // std::ignore = visitor;
     lock.lock();
-    auto start = kv.keys.begin();
-    auto end = kv.keys.end();
+    auto start = kv.all_keys.begin();
+    auto end = kv.all_keys.end();
     if (upper < lower)
     {
         return kSucc;
     }
     if (lower.size())
     {
-        start = kv.keys.lower_bound(lower);
+        start = kv.all_keys.lower_bound(lower);
     }
     if (upper.size())
     {
-        end = kv.keys.upper_bound(upper);
+        end = kv.all_keys.upper_bound(upper);
     }
     for (; start != end; start++)
     {

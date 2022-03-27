@@ -1,11 +1,11 @@
 #pragma once
 
 #include <dirent.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <cstring>
 #include <sstream>
 #include <vector>
 
@@ -35,7 +35,8 @@ static inline bool dirExists(const std::string &path)
  * @param ret all files name in directory.
  * @return files number.
  */
-static inline int scanDir(const std::string &path, std::vector<std::string> &ret)
+static inline int scanDir(const std::string &path,
+                          std::vector<std::string> &ret)
 {
     DIR *dir;
     struct dirent *rent;
@@ -50,7 +51,7 @@ static inline int scanDir(const std::string &path, std::vector<std::string> &ret
         strcpy(s, rent->d_name);
         if (s[0] != '.')
         {
-            ret.push_back(s);
+            ret.emplace_back(s);
         }
     }
     closedir(dir);
@@ -74,7 +75,7 @@ static inline int _mkdir(const char *path)
  */
 static inline int mkdir(const char *path)
 {
-    std::string currentPath = "";
+    std::string currentPath;
     std::string dirName;
     std::stringstream ss(path);
 

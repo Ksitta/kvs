@@ -1,7 +1,8 @@
 #ifndef __MEMTABLE_H__
 #define __MEMTABLE_H__
 
-#include <cstdint>
+#include <stdint.h>
+
 #include <string>
 #include <vector>
 
@@ -60,7 +61,7 @@ public:
         }
     }
 
-    int size()
+    int size() const
     {
         return entry_size;
     }
@@ -77,7 +78,7 @@ public:
 
             if (pos->right && pos->right->keypair.key == key)
             {
-                int offset = pos->right->keypair.offset;
+                int off = pos->right->keypair.offset;
                 int len = pos->right->keypair.len;
                 if (len == 0)
                 {
@@ -85,7 +86,7 @@ public:
                     return true;
                 }
                 value.resize(len);
-                fseek(file, offset, SEEK_SET);
+                fseek(file, off, SEEK_SET);
                 fread((void *) value.data(), 1, len, file);
                 return true;
             }
@@ -270,7 +271,7 @@ public:
         }
     }
 
-    Node *getkeypairs()
+    Node *getkeypairs() const
     {
         Node *p = head;
         while (p->down)

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <algorithm>
-#include <cassert>
 #include <list>
 #include <queue>
 #include <set>
@@ -24,7 +23,7 @@ private:
     uint64_t timestamp;
 
 public:
-    std::set<std::string> keys;
+    std::set<std::string> all_keys;
     KVStore(const std::string &dir);
 
     ~KVStore();
@@ -49,10 +48,6 @@ public:
         }
         return false;
     }
-
-    void reset();
-
-    void toSStable();
 
     void MemTableToSSTable();
 
