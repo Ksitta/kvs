@@ -146,9 +146,12 @@ public:
         Node *down_node = nullptr;
         int height = 1;
         int path_size = path.size();
+        long rand_num;
+        drand48_data randBuffer;
         for (int i = 0; i < path_size; i++)
         {
-            if (lrand48() & 1)
+            lrand48_r(&randBuffer, &rand_num);
+            if (rand_num & 1)
             {
                 height++;
             }
