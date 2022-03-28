@@ -143,10 +143,21 @@ public:
         {
             return false;
         }
-
-        bool insert_up = true;
         Node *down_node = nullptr;
-        while (insert_up && path.size() > 0)
+        int height = 1;
+        int path_size = path.size();
+        for (int i = 0; i < path_size; i++)
+        {
+            if (lrand48() & 1)
+            {
+                height++;
+            }
+            else
+            {
+                break;
+            }
+        }
+        while (height && path.size() > 0)
         {  //从下至上搜索路径回溯，50%概率
             Node *insert = path.back();
             path.pop_back();
@@ -156,9 +167,9 @@ public:
                                      offset,
                                      val.size());  // add新结点
             down_node = insert->right;  //把新结点赋值为down_node
-            insert_up = (rand() & 1);   // 50%概率
+            --height;
         }
-        if (insert_up)
+        if (height)
         {  //插入新的头结点，加层
             Node *oldHead = head;
             head = new Node();

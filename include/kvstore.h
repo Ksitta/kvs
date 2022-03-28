@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <list>
 #include <queue>
-#include <set>
 #include <string>
+#include <unordered_set>
 
 #include "MemTable.h"
 #include "MurmurHash3.h"
@@ -23,7 +23,7 @@ private:
     uint64_t timestamp;
 
 public:
-    std::set<std::string> all_keys;
+    std::unordered_set<std::string> all_keys;
     KVStore(const std::string &dir);
 
     ~KVStore();
