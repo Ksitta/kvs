@@ -155,6 +155,31 @@ public:
         fclose(file);
     }
 
+    void gc(std::unordered_set<std::string> & removalabe_keys, bool rem){
+        std::vector<KeyOffset> new_keypairs;
+        std::vector<std::string> vals;
+        int new_off = 0;
+        if(rem == false){
+            for (int i = 0; i < keypairs.size(); i++){
+                removalabe_keys.insert(keypairs[i].key);
+            }
+        } else {
+            for (int i = 0; i < keypairs.size(); i++){
+                if(!removalabe_keys.count(keypairs[i].key)){
+                    new_keypairs.emplace_back(keypairs[i].key, new_off, keypairs[i].len);
+                    std::string val;
+                    readfile(keypairs[i].offset, keypairs[i].len, val);
+                    vals.push_back(val);
+                    removalabe_keys.insert(keypairs[i].key);
+                    new_off += keypairs[i].len;
+                }
+            }
+            keypairs = std::move(new_keypairs);
+            indextoFile();
+            toFile(vals);
+        }
+    }
+
     void indextoFile() const
     {
         FILE *tmp = fopen((dir + ".meta").c_str(), "wb+");
@@ -189,6 +214,9 @@ public:
         // index
         indextoFile();
         // value
+        if(file){
+            fclose(file);
+        }
         file = fopen((dir + ".data").c_str(), "wb+");
         for (int i = 0; i < values.size(); i++)
         {
@@ -229,8 +257,8 @@ public:
     //从文件中获取value offset处的value
     void readfile(int offset, int len, std::string &value) const
     {
-        fseek(file, offset, SEEK_SET);
         value.resize(len);
+        fseek(file, offset, SEEK_SET);
         fread((void *) value.data(), 1, len, file);
     }
 

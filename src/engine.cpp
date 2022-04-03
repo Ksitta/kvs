@@ -73,23 +73,19 @@ RetCode Engine::visit(const Key &lower,
     // std::ignore = lower;
     // std::ignore = upper;
     // std::ignore = visitor;
-    bool left = true;
-    bool right = true;
-    if (lower == "")
-    {
-        left = false;
-    }
-    if (upper == "")
-    {
-        right = false;
-    }
     lock.lock();
-    for (auto start = kv.all_keys.begin(); start != kv.all_keys.end(); start++)
+    auto start = kv.all_keys.begin();
+    auto end = kv.all_keys.end();
+    if (lower != "")
     {
-        if ((*start < lower && left) || (*start > upper && right))
-        {
-            continue;
-        }
+        start = kv.all_keys.lower_bound(lower);
+    }
+    if (upper != "")
+    {
+        end = kv.all_keys.upper_bound(upper);
+    }
+    for (; start != end; start++)
+    {
         std::string value;
         if (kv.get(*start, value))
         {
@@ -102,8 +98,10 @@ RetCode Engine::visit(const Key &lower,
 
 RetCode Engine::garbage_collect()
 {
-    // TODO: your code here
-    return kNotSupported;
+    lock.lock();
+    kv.gc();
+    lock.unlock();
+    return kSucc;
 }
 
 std::shared_ptr<IROEngine> Engine::snapshot()

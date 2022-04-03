@@ -4,6 +4,7 @@
 #include <list>
 #include <queue>
 #include <string>
+#include <set>
 #include <unordered_set>
 
 #include "MemTable.h"
@@ -23,10 +24,12 @@ private:
     uint64_t timestamp;
 
 public:
-    std::unordered_set<std::string> all_keys;
+    std::set<std::string> all_keys;
     KVStore(const std::string &dir);
 
     ~KVStore();
+
+    void gc();
 
     inline std::string getpath(int n) const
     {

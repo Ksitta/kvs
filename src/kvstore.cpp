@@ -194,6 +194,23 @@ void KVStore::put(const std::string &key, const std::string &s)
     }
 }
 
+void KVStore::gc(){
+    int levels = sstables.size();
+    std::unordered_set<std::string> removable_keys;
+    memtab->gc(removable_keys);
+    for (auto s = sstables[0].begin(); s != sstables[0].end(); s++)
+    {
+        (*s)->gc(removable_keys, false);
+    }
+    for (int i = 1; i < levels; i++)
+    {
+        for (const auto &sst : sstables[i])
+        {
+            sst->gc(removable_keys, true);
+        }
+    }
+}
+
 bool KVStore::get(const std::string &key, std::string &value) const
 {
     std::string raw = value;

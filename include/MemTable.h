@@ -44,6 +44,14 @@ public:
         recover();
     }
 
+    void gc(std::unordered_set<std::string> & removable_keys){
+        Node * node = getkeypairs();
+        while(node){
+            removable_keys.insert(node->keypair.key);
+            node = node->right;
+        }
+    }
+
     ~MemTable()
     {
         Node *p = head;
