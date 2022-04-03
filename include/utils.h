@@ -9,11 +9,9 @@
 #include <sstream>
 #include <vector>
 
-namespace utils
-{
+namespace utils {
 
-static inline bool exist(const std::string &path)
-{
+static inline bool exist(const std::string &path) {
     return (::access(path.c_str(), 0) == 0);
 }
 
@@ -22,8 +20,7 @@ static inline bool exist(const std::string &path)
  * @param path directory to be checked.
  * @return ture if directory exists, false otherwise.
  */
-static inline bool dirExists(const std::string &path)
-{
+static inline bool dirExists(const std::string &path) {
     struct stat st;
     int ret = stat(path.c_str(), &st);
     return ret == 0 && st.st_mode & S_IFDIR;
@@ -36,21 +33,17 @@ static inline bool dirExists(const std::string &path)
  * @return files number.
  */
 static inline int scanDir(const std::string &path,
-                          std::vector<std::string> &ret)
-{
+                          std::vector<std::string> &ret) {
     DIR *dir;
     struct dirent *rent;
     dir = opendir(path.c_str());
-    if (dir == nullptr)
-    {
+    if (dir == nullptr) {
         return -1;
     }
     char s[100];
-    while ((rent = readdir(dir)))
-    {
+    while ((rent = readdir(dir))) {
         strcpy(s, rent->d_name);
-        if (s[0] != '.')
-        {
+        if (s[0] != '.') {
             ret.emplace_back(s);
         }
     }
@@ -63,8 +56,7 @@ static inline int scanDir(const std::string &path,
  * @param path directory to be created.
  * @return 0 if directory is created successfully, -1 otherwise.
  */
-static inline int _mkdir(const char *path)
-{
+static inline int _mkdir(const char *path) {
     return ::mkdir(path, 0775);
 }
 
@@ -73,17 +65,14 @@ static inline int _mkdir(const char *path)
  * @param path directory to be created.
  * @return 0 if directory is created successfully, -1 otherwise.
  */
-static inline int mkdir(const char *path)
-{
+static inline int mkdir(const char *path) {
     std::string currentPath;
     std::string dirName;
     std::stringstream ss(path);
 
-    while (std::getline(ss, dirName, '/'))
-    {
+    while (std::getline(ss, dirName, '/')) {
         currentPath += dirName;
-        if (!dirExists(currentPath) && _mkdir(currentPath.c_str()) != 0)
-        {
+        if (!dirExists(currentPath) && _mkdir(currentPath.c_str()) != 0) {
             return -1;
         }
         currentPath += "/";
@@ -96,8 +85,7 @@ static inline int mkdir(const char *path)
  * @param path directory to be deleted.
  * @return 0 if delete successfully, -1 otherwise.
  */
-static inline int rmdir(const char *path)
-{
+static inline int rmdir(const char *path) {
     return ::rmdir(path);
 }
 
@@ -106,9 +94,8 @@ static inline int rmdir(const char *path)
  * @param path file to be deleted.
  * @return 0 if delete successfully, -1 otherwise.
  */
-static inline int rmfile(const char *path)
-{
+static inline int rmfile(const char *path) {
     return ::unlink(path);
 }
 
-}  // namespace utils
+} // namespace utils

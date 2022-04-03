@@ -13,8 +13,7 @@
 #include "comm.h"
 #include "utils.h"
 
-class KVStore
-{
+class KVStore {
 private:
     std::string dir;
     MemTable *memtab;
@@ -30,8 +29,7 @@ public:
 
     void gc();
 
-    inline std::string getpath(int n) const
-    {
+    inline std::string getpath(int n) const {
         std::string path = dir + "/level_" + std::to_string(n);
         return path;
     }
@@ -45,11 +43,9 @@ public:
 
     bool get(const std::string &key, std::string &value) const;
 
-    inline bool del(const std::string &key)
-    {
+    inline bool del(const std::string &key) {
         std::string tmp;
-        if (get(key, tmp))
-        {
+        if (get(key, tmp)) {
             put(key, "");
             return true;
         }
@@ -60,7 +56,7 @@ public:
 
     void compaction(int des);
 
-    uint64_t merge(std::vector<SStable *> &needMerge,
+    uint64_t merge(std::vector<SStable *> &need_merge,
                    std::vector<std::string> &keys,
                    std::vector<std::string> &values);
 
