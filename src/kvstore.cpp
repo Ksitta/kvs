@@ -1,12 +1,11 @@
 #include "kvstore.h"
 
-int string_to_unsigned_int(const std::string &str)
+int string_to_int(const std::string &str)
 {
     int result = 0;
     int temp = 1;
     for (int i = str.size() - 1; i >= 0; i--)
     {
-        int k = str.size() - i - 1;
         if (isdigit(str[i]))
         {
             result += temp * (str[i] - '0');
@@ -44,10 +43,10 @@ KVStore::KVStore(const std::string &dir) : level(0), index(0), timestamp(0)
         if (ret.size() > 0)
         {
             int max_level =
-                string_to_unsigned_int((*(ret.end() - 1)).substr(6));
+                string_to_int((*(ret.end() - 1)).substr(6));
             for (const auto &item : ret)
             {
-                int tmp_max_level = string_to_unsigned_int(item.substr(6));
+                int tmp_max_level = string_to_int(item.substr(6));
                 if (max_level < tmp_max_level)
                 {
                     max_level = tmp_max_level;
@@ -69,7 +68,7 @@ KVStore::KVStore(const std::string &dir) : level(0), index(0), timestamp(0)
             {
                 continue;
             }
-            uint32_t tmp_level = string_to_unsigned_int(item.substr(6));
+            int tmp_level = string_to_int(item.substr(6));
             if (tmp_level > level)
                 level = tmp_level;
             for (const auto &sst : sub)
@@ -80,8 +79,7 @@ KVStore::KVStore(const std::string &dir) : level(0), index(0), timestamp(0)
                 }
                 std::string filename =
                     dir + "/" + item + "/" + sst.substr(0, sst.size() - 5);
-                uint32_t tmp_index =
-                    string_to_unsigned_int(sst.substr(0, sst.size() - 5));
+                int tmp_index = string_to_int(sst.substr(0, sst.size() - 5));
                 if (tmp_index > index)
                 {
                     index = tmp_index;
@@ -93,7 +91,13 @@ KVStore::KVStore(const std::string &dir) : level(0), index(0), timestamp(0)
                     continue;
                 }
                 SStable *sstable = new SStable(filename);
-                sstables[tmp_level].push_back(sstable);
+                auto iter = sstables[tmp_level].begin();
+                for(;iter != sstables[tmp_level].end(); iter++){
+                    if((*iter)->timestamp > sstable->timestamp){
+                        break;
+                    }
+                }
+                sstables[tmp_level].insert(iter, sstable);
                 if (sstable->timestamp > timestamp)
                     timestamp = sstable->timestamp;
             }
@@ -118,46 +122,6 @@ KVStore::KVStore(const std::string &dir) : level(0), index(0), timestamp(0)
             log = fopen((dir + "/mem.log").c_str(), "wb+");
         }
         memtab = new MemTable(name, log);
-        for (int i = sstables.size() - 1; i > 0; i--)
-        {
-            for (auto each : sstables[i])
-            {
-                auto &each_key = each->get_keys();
-                for (auto key : each_key)
-                {
-                    if (key.len)
-                    {
-                        all_keys.insert(key.key);
-                    }
-                    else
-                    {
-                        all_keys.erase(key.key);
-                    }
-                }
-            }
-        }
-        // std::sort(sstables[0].begin(), sstables[0].end(), SStable::comp);
-        for (auto each : sstables[0])
-        {
-            auto &each_key = each->get_keys();
-            for (auto &key : each_key)
-            {
-                all_keys.insert(key.key);
-            }
-        }
-        auto mem_key = memtab->getkeypairs();
-        while (mem_key)
-        {
-            if (mem_key->keypair.len)
-            {
-                all_keys.insert(mem_key->keypair.key);
-            }
-            else
-            {
-                all_keys.erase(mem_key->keypair.key);
-            }
-            mem_key = mem_key->right;
-        }
     }
 }
 
@@ -179,14 +143,6 @@ KVStore::~KVStore()
 
 void KVStore::put(const std::string &key, const std::string &s)
 {
-    if (s.size() == 0)
-    {
-        all_keys.erase(key);
-    }
-    else
-    {
-        all_keys.insert(key);
-    }
     if (!memtab->put(key, s))
     {
         MemTableToSSTable();
@@ -194,19 +150,20 @@ void KVStore::put(const std::string &key, const std::string &s)
     }
 }
 
-void KVStore::gc(){
+void KVStore::gc()
+{
     int levels = sstables.size();
     std::unordered_set<std::string> removable_keys;
     memtab->gc(removable_keys);
-    for (auto s = sstables[0].begin(); s != sstables[0].end(); s++)
+    for (auto s = sstables[0].rbegin(); s != sstables[0].rend(); s++)
     {
-        (*s)->gc(removable_keys, false);
+        (*s)->gc(removable_keys);
     }
     for (int i = 1; i < levels; i++)
     {
         for (const auto &sst : sstables[i])
         {
-            sst->gc(removable_keys, true);
+            sst->gc(removable_keys);
         }
     }
 }
@@ -214,7 +171,6 @@ void KVStore::gc(){
 bool KVStore::get(const std::string &key, std::string &value) const
 {
     std::string raw = value;
-    bool find = false;
     bool ret = memtab->get(key, raw);
     if (ret)
     {
@@ -231,33 +187,27 @@ bool KVStore::get(const std::string &key, std::string &value) const
     {
         return false;
     }
-    for (auto s = sstables[0].begin(); s != sstables[0].end(); s++)
+    for (auto s = sstables[0].rbegin(); s != sstables[0].rend(); s++)
     {
         if ((*s)->_min <= key && (*s)->_max >= key)
         {
             if (max_stamp < (*s)->timestamp)
             {
-                // if ((*s)->bloomFilter.test(key))
-                // {
-                ret = (*s)->get(key, raw);
-                if (ret)
+                if ((*s)->bloomFilter.test(key))
                 {
-                    max_stamp = (*s)->timestamp;
-                    find = true;
+                    ret = (*s)->get(key, raw);
+                    if (ret)
+                    {
+                        if (raw.size() == 0)
+                        {
+                            return false;
+                        }
+                        value = raw;
+                        return true;
+                    }
                 }
-                // }
             }
         }
-    }
-
-    if (find)
-    {
-        if (raw.size() == 0)
-        {
-            return false;
-        }
-        value = raw;
-        return true;
     }
 
     int levels = sstables.size();
@@ -329,7 +279,7 @@ void KVStore::MemTableToSSTable()
     memtab = new MemTable(name, log);
     // 如果当前第level层已经满了 --> 触发compaction
     int des = 0;
-    while (sstables[des].size() > (2 << (des)))
+    while (int(sstables[des].size()) > (2 << (des)))
     {
         des++;
         compaction(des);
@@ -338,8 +288,7 @@ void KVStore::MemTableToSSTable()
 
 uint64_t KVStore::merge(std::vector<SStable *> &needMerge,
                         std::vector<std::string> &keys,
-                        std::vector<std::string> &values,
-                        int level)
+                        std::vector<std::string> &values)
 {
     int nums[needMerge.size()];
     uint64_t timestamps[needMerge.size()];
@@ -351,7 +300,7 @@ uint64_t KVStore::merge(std::vector<SStable *> &needMerge,
         std::greater<std::pair<std::string, std::pair<int, int>>>>
         merge_queue;
     std::vector<std::string> all_value[needMerge.size()];
-    for (int i = 0; i < needMerge.size(); i++)
+    for (int i = 0; i < int(needMerge.size()); i++)
     {
         nums[i] = needMerge[i]->get_keys().size();
         used[i] = 0;
@@ -362,7 +311,7 @@ uint64_t KVStore::merge(std::vector<SStable *> &needMerge,
         }
         needMerge[i]->get_values(all_value[i]);
     }
-    for (int i = 0; i < needMerge.size(); i++)
+    for (int i = 0; i < int(needMerge.size()); i++)
     {
         merge_queue.push({needMerge[i]->get_keys()[0].key, {timestamps[i], i}});
     }
@@ -405,22 +354,24 @@ void KVStore::allocToSStable(std::vector<std::string> &keys,
     auto insertIterator = sstables[des].begin();
     for (; insertIterator != sstables[des].end(); ++insertIterator)
     {
-        if ((*insertIterator)->timestamp > stamp){
+        if ((*insertIterator)->timestamp > stamp)
+        {
             break;
         }
     }
-    uint64_t filesize = FILE_HEADER;
+    int filesize = FILE_HEADER;
     std::vector<KeyOffset> writeKeys;
     std::vector<std::string> writeValues;
-    auto key_num = keys.size();
+    int key_num = int(keys.size());
     int offset = 0;
     int scale = 1;
-    for(int i = 0; i < des; i++){
+    for (int i = 0; i < des; i++)
+    {
         scale *= 10;
     }
     for (int i = 0; i < key_num; ++i)
     {
-        if (filesize + 8 + keys[i].size() + vals[i].size() > MAXSIZE * scale)
+        if (int(filesize) + 8 + int(keys[i].size()) + int(vals[i].size()) > MAXSIZE * scale)
         {
             std::string filename = path + "/" + std::to_string(index);
             auto sst = new SStable(
@@ -486,7 +437,7 @@ void KVStore::compaction(int des)
     //记录目标层哪些要被合并
     std::string targetPath = getpath(des);
     std::vector<std::list<SStable *>::iterator> needRemove;
-    if (sstables.size() > des)
+    if (int(sstables.size()) > des)
     {  //如果下一层已经存在
         std::list<SStable *> &nextLevel = sstables[des];
         for (auto it = nextLevel.begin(); it != nextLevel.end(); it++)
@@ -508,7 +459,7 @@ void KVStore::compaction(int des)
     }
     std::vector<std::string> keys;
     std::vector<std::string> values;
-    uint64_t stamp = merge(needMerge, keys, values, des - 1);
+    uint64_t stamp = merge(needMerge, keys, values);
     auto &desLevel = sstables[des];
     std::string tmp;
     for (auto thisIterator : needRemove)
@@ -543,6 +494,27 @@ void KVStore::compaction(int des)
             utils::rmfile((tmp + ".data").c_str());
             utils::rmfile((tmp + ".meta").c_str());
             sstables[des - 1].pop_front();
+        }
+    }
+}
+
+void KVStore::visit(const std::string &lower,
+                    const std::string &upper,
+                    const std::function<void(const std::string &,
+                                             const std::string &)> &visitor) const
+{
+    int levels = sstables.size();
+    std::unordered_set<std::string> used_keys;
+    memtab->visit(lower, upper, visitor, used_keys);
+    for (auto s = sstables[0].rbegin(); s != sstables[0].rend(); s++)
+    {
+        (*s)->visit(lower, upper, visitor, used_keys);
+    }
+    for (int i = 1; i < levels; i++)
+    {
+        for (const auto &sst : sstables[i])
+        {
+            sst->visit(lower, upper, visitor, used_keys);
         }
     }
 }

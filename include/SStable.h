@@ -38,14 +38,14 @@ public:
     {
         uint32_t byteindex = index % BFSIZE;
         uint32_t bitindex = index % 8;
-        data[byteindex] = (1 << bitindex) || data[byteindex];
+        data[byteindex] = (1 << bitindex) | data[byteindex];
     }
 
     inline bool getbit(uint32_t index)
     {
         uint32_t byteindex = index % BFSIZE;
         uint32_t bitindex = index % 8;
-        return (1 << bitindex) && data[byteindex];
+        return (1 << bitindex) & data[byteindex];
     }
 
     bool test(const std::string &key)
@@ -96,19 +96,19 @@ public:
     SStable(std::string &dir) : dir(dir)
     {
         file = fopen((dir + ".meta").c_str(), "rb");
-        fread(&timestamp, 8, 1, file);
-        fread(&num, 4, 1, file);
-        fread(&type, 4, 1, file);
+        std::ignore = fread(&timestamp, 8, 1, file);
+        std::ignore = fread(&num, 4, 1, file);
+        std::ignore = fread(&type, 4, 1, file);
         if (type == 0)
         {
             int len[2];
             int pos = 0;
             for (int i = 0; i < num; i++)
             {
-                fread(len, 4, 2, file);
+                std::ignore = fread(len, 4, 2, file);
                 std::string str;
                 str.resize(len[0]);
-                fread((void *) str.data(), 1, len[0], file);
+                std::ignore = fread((void *) str.data(), 1, len[0], file);
                 bloomFilter.put(str);
                 keypairs.emplace_back(str, pos, len[1]);
                 pos += len[1];
@@ -119,16 +119,16 @@ public:
             int len[3];
             for (int i = 0; i < num; i++)
             {
-                fread(len, 4, 3, file);
+                std::ignore = fread(len, 4, 3, file);
                 std::string str;
                 str.resize(len[0]);
-                fread((void *) str.data(), 1, len[0], file);
+                std::ignore = fread((void *) str.data(), 1, len[0], file);
                 bloomFilter.put(str);
                 keypairs.emplace_back(str, len[1], len[2]);
             }
         }
         _min = keypairs[0].key;
-        _max = keypairs[keypairs.size() - 1].key;
+        _max = keypairs[int(keypairs.size()) - 1].key;
         fclose(file);
         file = fopen((dir + ".data").c_str(), "rb");
     }
@@ -155,55 +155,49 @@ public:
         fclose(file);
     }
 
-    void gc(std::unordered_set<std::string> & removalabe_keys, bool rem){
+    void gc(std::unordered_set<std::string> & removalabe_keys){
         std::vector<KeyOffset> new_keypairs;
         std::vector<std::string> vals;
         int new_off = 0;
-        if(rem == false){
-            for (int i = 0; i < keypairs.size(); i++){
+        for (int i = 0; i < int(keypairs.size()); i++){
+            if(!removalabe_keys.count(keypairs[i].key)){
+                new_keypairs.emplace_back(keypairs[i].key, new_off, keypairs[i].len);
+                std::string val;
+                readfile(keypairs[i].offset, keypairs[i].len, val);
+                vals.push_back(val);
                 removalabe_keys.insert(keypairs[i].key);
+                new_off += keypairs[i].len;
             }
-        } else {
-            for (int i = 0; i < keypairs.size(); i++){
-                if(!removalabe_keys.count(keypairs[i].key)){
-                    new_keypairs.emplace_back(keypairs[i].key, new_off, keypairs[i].len);
-                    std::string val;
-                    readfile(keypairs[i].offset, keypairs[i].len, val);
-                    vals.push_back(val);
-                    removalabe_keys.insert(keypairs[i].key);
-                    new_off += keypairs[i].len;
-                }
-            }
-            keypairs = std::move(new_keypairs);
-            indextoFile();
-            toFile(vals);
         }
+        keypairs = std::move(new_keypairs);
+        indextoFile();
+        toFile(vals);
     }
 
     void indextoFile() const
     {
         FILE *tmp = fopen((dir + ".meta").c_str(), "wb+");
-        fwrite(&timestamp, 8, 1, tmp);
-        fwrite(&num, 4, 1, tmp);
-        fwrite(&type, 4, 1, tmp);
+        std::ignore = fwrite(&timestamp, 8, 1, tmp);
+        std::ignore = fwrite(&num, 4, 1, tmp);
+        std::ignore = fwrite(&type, 4, 1, tmp);
         if (type == 0)
         {
-            for (int i = 0; i < keypairs.size(); i++)
+            for (int i = 0; i < int(keypairs.size()); i++)
             {
-                int len[2] = {keypairs[i].key.size(), keypairs[i].len};
-                fwrite(&len, 4, 2, tmp);
-                fwrite(keypairs[i].key.c_str(), 1, len[0], tmp);
+                int len[2] = {int(keypairs[i].key.size()), keypairs[i].len};
+                std::ignore = fwrite(&len, 4, 2, tmp);
+                std::ignore = fwrite(keypairs[i].key.c_str(), 1, len[0], tmp);
             }
         }
         else
         {
-            for (int i = 0; i < keypairs.size(); i++)
+            for (int i = 0; i < int(keypairs.size()); i++)
             {
-                int len[3] = {keypairs[i].key.size(),
+                int len[3] = {int(keypairs[i].key.size()),
                               keypairs[i].offset,
                               keypairs[i].len};
-                fwrite(&len, 4, 3, tmp);
-                fwrite(keypairs[i].key.c_str(), 1, len[0], tmp);
+                std::ignore = fwrite(&len, 4, 3, tmp);
+                std::ignore = fwrite(keypairs[i].key.c_str(), 1, len[0], tmp);
             }
         }
         fclose(tmp);
@@ -218,9 +212,9 @@ public:
             fclose(file);
         }
         file = fopen((dir + ".data").c_str(), "wb+");
-        for (int i = 0; i < values.size(); i++)
+        for (int i = 0; i < int(values.size()); i++)
         {
-            fwrite(values[i].c_str(), 1, values[i].size(), file);
+            std::ignore = fwrite(values[i].c_str(), 1, values[i].size(), file);
         }
         fflush(file);
     }
@@ -228,7 +222,7 @@ public:
     bool get(const std::string &key, std::string &value) const
     {
         int left = 0;
-        int right = keypairs.size();
+        int right = int(keypairs.size());
         while (left < right)
         {
             int mid = left + (right - left) / 2;
@@ -254,12 +248,48 @@ public:
         return false;
     }
 
+    void visit(const std::string &lower,
+                const std::string &upper,
+                const std::function<void(const std::string &,
+                                         const std::string &)> &visitor,
+                std::unordered_set<std::string> & used_key) const {
+                    bool lb = false, ub = false;
+                    if(lower == ""){
+                        lb = true;
+                    } else {
+                        if(lower > this->_max){
+                            return;
+                        }
+                    }
+                    if(upper == ""){
+                        ub = true;
+                    } else {
+                        if(upper < this->_min){
+                            return;
+                        }
+                    }
+                    for(auto &i : keypairs){
+                        if((lb || i.key >= lower) && (ub || i.key <= upper)){
+                            if(used_key.count(i.key)){
+                                continue;
+                            }
+                            used_key.insert(i.key);
+                            if(i.len == 0){
+                                continue;
+                            }
+                            std::string val;
+                            readfile(i.offset, i.len, val);
+                            visitor(i.key, val);
+                        }
+                    }
+                }
+
     //从文件中获取value offset处的value
     void readfile(int offset, int len, std::string &value) const
     {
         value.resize(len);
         fseek(file, offset, SEEK_SET);
-        fread((void *) value.data(), 1, len, file);
+        std::ignore = fread((void *) value.data(), 1, len, file);
     }
 
     inline std::vector<KeyOffset> &get_keys()
@@ -276,7 +306,7 @@ public:
             {
                 std::string value;
                 value.resize(item.len);
-                fread((void *) value.data(), 1, item.len, file);
+                std::ignore = fread((void *) value.data(), 1, item.len, file);
                 values.emplace_back(value);
             }
         }
@@ -287,7 +317,7 @@ public:
                 std::string value;
                 value.resize(item.len);
                 fseek(file, item.offset, SEEK_SET);
-                fread((void *) value.data(), 1, item.len, file);
+                std::ignore = fread((void *) value.data(), 1, item.len, file);
                 values.emplace_back(value);
             }
         }

@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <list>
 #include <queue>
-#include <string>
 #include <set>
+#include <string>
 #include <unordered_set>
 
 #include "MemTable.h"
@@ -24,7 +24,6 @@ private:
     uint64_t timestamp;
 
 public:
-    std::set<std::string> all_keys;
     KVStore(const std::string &dir);
 
     ~KVStore();
@@ -36,6 +35,11 @@ public:
         std::string path = dir + "/level_" + std::to_string(n);
         return path;
     }
+
+    void visit(const std::string &lower,
+               const std::string &upper,
+               const std::function<void(const std::string &,
+                                        const std::string &)> &visitor) const;
 
     void put(const std::string &key, const std::string &s);
 
@@ -58,8 +62,7 @@ public:
 
     uint64_t merge(std::vector<SStable *> &needMerge,
                    std::vector<std::string> &keys,
-                   std::vector<std::string> &values,
-                   int level);
+                   std::vector<std::string> &values);
 
     void allocToSStable(std::vector<std::string> &keys,
                         std::vector<std::string> &vals,

@@ -4,7 +4,7 @@
 #include <string>
 
 const int FILE_HEADER = 16;
-const int BFSIZE = 10240;
+const int BFSIZE = 10289;
 const int MAXSIZE = 1 << 22;  // 4MB
 
 struct KeyOffset

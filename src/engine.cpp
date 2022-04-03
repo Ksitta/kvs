@@ -9,7 +9,7 @@ Engine::Engine(const std::string &path, EngineOptions options)
     // std::cout << "created" << std::endl;
     // TODO: your code here
     // std::ignore = path;
-    // std::ignore = options;
+    std::ignore = options;
 }
 
 Engine::~Engine()
@@ -65,33 +65,14 @@ RetCode Engine::sync()
     return kSucc;
 }
 
-RetCode Engine::visit(const Key &lower,
-                      const Key &upper,
-                      const Visitor &visitor)
+RetCode Engine::visit(const Key &lower, const Key &upper, const Visitor &visitor)
 {
     // TODO: your code here
     // std::ignore = lower;
     // std::ignore = upper;
     // std::ignore = visitor;
     lock.lock();
-    auto start = kv.all_keys.begin();
-    auto end = kv.all_keys.end();
-    if (lower != "")
-    {
-        start = kv.all_keys.lower_bound(lower);
-    }
-    if (upper != "")
-    {
-        end = kv.all_keys.upper_bound(upper);
-    }
-    for (; start != end; start++)
-    {
-        std::string value;
-        if (kv.get(*start, value))
-        {
-            visitor(*start, value);
-        }
-    }
+    kv.visit(lower, upper, visitor);
     lock.unlock();
     return kSucc;
 }

@@ -95,13 +95,43 @@ public:
                 }
                 value.resize(len);
                 fseek(file, off, SEEK_SET);
-                fread((void *) value.data(), 1, len, file);
+                std::ignore = fread((void *) value.data(), 1, len, file);
                 return true;
             }
             pos = pos->down;
         }
         return false;
     }
+
+    void visit(const std::string &lower,
+                const std::string &upper,
+                const std::function<void(const std::string &,
+                                         const std::string &)> &visitor,
+                std::unordered_set<std::string> & used_key) const {
+                    bool lb = false, ub = false;
+                    if(lower == ""){
+                        lb = true;
+                    }
+                    if(upper == ""){
+                        ub = true;
+                    }
+                    Node *node = getkeypairs();
+                    while(node){
+                        if((lb || lower <= node->keypair.key) && (ub || upper >= node->keypair.key)){
+                            used_key.insert(node->keypair.key);
+                            if(node->keypair.len == 0){
+                                node = node->right;
+                                continue;
+                            }
+                            std::string val;
+                            val.resize(node->keypair.len);
+                            fseek(file, node->keypair.offset, SEEK_SET);
+                            std::ignore = fread((void *) val.data(), 1, node->keypair.len, file);
+                            visitor(node->keypair.key, val);
+                        }
+                        node = node->right;
+                    }
+                }
 
     bool put(const std::string &key, const std::string &val)
     {
@@ -138,11 +168,11 @@ public:
             }
             total_size = new_size;
             fseek(file, offset, SEEK_SET);
-            fwrite(val.c_str(), 1, val.size(), file);
-            int log_size[2] = {key.size(), val.size()};
-            fwrite(log_size, 4, 2, log);
-            fwrite(key.c_str(), 1, log_size[0], log);
-            fwrite(val.c_str(), 1, log_size[1], log);
+            std::ignore = fwrite(val.c_str(), 1, val.size(), file);
+            int log_size[2] = {int(key.size()), int(val.size())};
+            std::ignore = fwrite(log_size, 4, 2, log);
+            std::ignore = fwrite(key.c_str(), 1, log_size[0], log);
+            std::ignore = fwrite(val.c_str(), 1, log_size[1], log);
             fflush(log);
             offset += val.size();
             return true;
@@ -190,11 +220,11 @@ public:
         entry_size++;
         total_size += (val.size() + key.size() + 12);
         fseek(file, offset, SEEK_SET);
-        fwrite(val.c_str(), 1, val.size(), file);
-        int log_size[2] = {key.size(), val.size()};
-        fwrite(log_size, 4, 2, log);
-        fwrite(key.c_str(), 1, log_size[0], log);
-        fwrite(val.c_str(), 1, log_size[1], log);
+        std::ignore = fwrite(val.c_str(), 1, val.size(), file);
+        int log_size[2] = {int(key.size()), int(val.size())};
+        std::ignore = fwrite(log_size, 4, 2, log);
+        std::ignore = fwrite(key.c_str(), 1, log_size[0], log);
+        std::ignore = fwrite(val.c_str(), 1, log_size[1], log);
         fflush(log);
         offset += val.size();
         return true;
@@ -235,7 +265,7 @@ public:
             }
             total_size = new_size;
             fseek(file, offset, SEEK_SET);
-            fwrite(val.c_str(), 1, val.size(), file);
+            std::ignore = fwrite(val.c_str(), 1, val.size(), file);
             offset += val.size();
             return true;
         }
@@ -268,7 +298,7 @@ public:
         entry_size++;
         total_size += (val.size() + key.size() + 12);
         fseek(file, offset, SEEK_SET);
-        fwrite(val.c_str(), 1, val.size(), file);
+        std::ignore = fwrite(val.c_str(), 1, val.size(), file);
         offset += val.size();
         return true;
     }
@@ -280,15 +310,15 @@ public:
             int len[2];
             std::string key;
             std::string val;
-            fread(len, 4, 2, log);
+            std::ignore = fread(len, 4, 2, log);
             if (feof(log))
             {
                 break;
             }
             key.resize(len[0]);
             val.resize(len[1]);
-            fread((void *) key.data(), 1, len[0], log);
-            fread((void *) val.data(), 1, len[1], log);
+            std::ignore = fread((void *) key.data(), 1, len[0], log);
+            std::ignore = fread((void *) val.data(), 1, len[1], log);
             put_nolog(key, val);
         }
     }
