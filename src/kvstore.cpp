@@ -405,17 +405,22 @@ void KVStore::allocToSStable(std::vector<std::string> &keys,
     auto insertIterator = sstables[des].begin();
     for (; insertIterator != sstables[des].end(); ++insertIterator)
     {
-        if ((*insertIterator)->timestamp > stamp)
+        if ((*insertIterator)->timestamp > stamp){
             break;
+        }
     }
     uint64_t filesize = FILE_HEADER;
     std::vector<KeyOffset> writeKeys;
     std::vector<std::string> writeValues;
     auto key_num = keys.size();
     int offset = 0;
+    int scale = 1;
+    for(int i = 0; i < des; i++){
+        scale *= 10;
+    }
     for (int i = 0; i < key_num; ++i)
     {
-        if (filesize + 8 + keys[i].size() + vals[i].size() > MAXSIZE)
+        if (filesize + 8 + keys[i].size() + vals[i].size() > MAXSIZE * scale)
         {
             std::string filename = path + "/" + std::to_string(index);
             auto sst = new SStable(
