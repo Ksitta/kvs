@@ -2,6 +2,7 @@
 #define __COMM_H__
 
 #include <string>
+#include <functional>
 
 const int FILE_HEADER = 16;
 const int BFSIZE = 10289;
