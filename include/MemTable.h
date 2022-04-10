@@ -30,13 +30,27 @@ public:
     FILE *log;
     std::string dir;
 
-    MemTable(const std::string &dir, FILE *log) : log(log), dir(dir) {
-        file = fopen((dir + ".data").c_str(), "wb+");
+    MemTable(const std::string &dir, FILE *log, bool snap = false) : log(log), dir(dir) {
+        if(snap){
+            file = fopen((dir + ".data").c_str(), "rb+");
+        } else {
+            file = fopen((dir + ".data").c_str(), "wb+");
+        }
         head = new Node();
         total_size = FILE_HEADER;
         entry_size = 0;
         offset = 0;
-        recover();
+        if(!snap){
+            recover();
+        }
+    }
+
+    void clone(MemTable *t){
+        Node *node = t->getkeypairs();
+        while(node){
+            put_clone(node->keypair);
+            node = node->right;
+        }
     }
 
     void gc(std::unordered_set<std::string> &removable_keys) {
@@ -58,6 +72,9 @@ public:
                 p = p->right;
                 delete tmp;
             }
+        }
+        if(log){
+            fclose(log);
         }
     }
 
@@ -87,6 +104,10 @@ public:
             pos = pos->down;
         }
         return false;
+    }
+
+    void flush(){
+        fflush(file);
     }
 
     void visit(const std::string &lower,
@@ -253,6 +274,65 @@ public:
         fseek(file, offset, SEEK_SET);
         std::ignore = fwrite(val.c_str(), 1, val.size(), file);
         offset += val.size();
+        return true;
+    }
+
+    bool put_clone(const KeyOffset &keypairs) {
+        bool cover = false;
+        std::vector<Node *> path; //记录从上到下的路径
+        Node *pos = head;
+        while (pos) {
+            while (pos->right && pos->right->keypair.key < keypairs.key) {
+                pos = pos->right;
+            }
+            path.push_back(pos);
+            if (pos->right && pos->right->keypair.key == keypairs.key) {
+                cover = true;
+                break;
+            }
+            pos = pos->down;
+        }
+        if (cover) {
+            Node *edit = path.back()->right;
+            int new_size = total_size + keypairs.len;
+            if (new_size > MAXSIZE) {
+                return false;
+            }
+            while (edit) {
+                edit->keypair.offset = offset;
+                edit->keypair.len = keypairs.len;
+                edit = edit->down;
+            }
+            total_size = new_size;
+            offset += keypairs.len;
+            return true;
+        }
+        if (total_size + keypairs.len + keypairs.key.size() + 12 > MAXSIZE) {
+            return false;
+        }
+
+        bool insert_up = true;
+        Node *down_node = nullptr;
+        while (insert_up && path.size() > 0) { //从下至上搜索路径回溯，50%概率
+            Node *insert = path.back();
+            path.pop_back();
+            insert->right = new Node(insert->right,
+                                     down_node,
+                                     keypairs.key,
+                                     offset,
+                                     keypairs.len); // add新结点
+            down_node = insert->right;            //把新结点赋值为down_node
+            insert_up = (rand() & 1);             // 50%概率
+        }
+        if (insert_up) { //插入新的头结点，加层
+            Node *oldHead = head;
+            head = new Node();
+            head->right = new Node(nullptr, down_node, keypairs.key, offset, keypairs.len);
+            head->down = oldHead;
+        }
+        entry_size++;
+        total_size += (keypairs.len + keypairs.key.size() + 12);
+        offset += keypairs.len;
         return true;
     }
 

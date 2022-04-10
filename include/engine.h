@@ -77,6 +77,34 @@ private:
     std::mutex lock;
 };
 
+class Snap : public IROEngine{
+public:
+    Snap(KVStore *kvs) : kv(kvs){}
+
+    virtual RetCode get(const Key &key, Value &value) override{
+        lock.lock();
+        bool ret = kv->get(key, value);
+        lock.unlock();
+        if (ret == false)
+        {
+            return kNotFound;
+        }
+        return kSucc;
+    }
+
+    virtual RetCode visit(const Key &lower,
+                          const Key &upper,
+                          const Visitor &visitor) override{
+                              lock.lock();
+                              kv->visit(lower, upper, visitor);
+                              lock.unlock();
+                              return kSucc;
+                          }
+private:
+    std::shared_ptr<KVStore> kv;
+    std::mutex lock;
+};
+
 }  // namespace kvs
 
 #endif  // INCLUDE_ENGINE_H_

@@ -14,7 +14,27 @@ int string_to_int(const std::string &str) {
     return result;
 }
 
+KVStore* KVStore::snapshot(){
+    KVStore * ret = new KVStore();
+    ret->memtab = nullptr;
+    MemTableToSSTable();
+    ref_cnt++;
+    for(int i = 0; i < sstables.size(); i++){
+        ret->sstables.push_back(std::list<SStable *>());
+    }
+    auto iter = ret->sstables.begin();
+    for(auto i : sstables){
+        for(auto each : i){
+            iter->push_back(new SStable(each->dir));
+        }
+        iter++;
+    }
+    return ret;
+}
+
 KVStore::KVStore(const std::string &dir) : level(0), index(0), timestamp(0) {
+    this->ref_cnt = 0;
+    this->ref = nullptr;
     this->dir = dir;
     FILE *log = nullptr;
     if (!utils::dirExists(dir)) {
@@ -25,8 +45,7 @@ KVStore::KVStore(const std::string &dir) : level(0), index(0), timestamp(0) {
         std::string name = path + "/" + std::to_string(index);
         log = fopen((dir + "/mem.log").c_str(), "wb+");
         memtab = new MemTable(name, log);
-        auto add_ss = new std::list<SStable *>;
-        sstables.push_back(*add_ss);
+        sstables.push_back(std::list<SStable *>());
         timestamp++;
     } else {
         std::vector<std::string> ret;
@@ -42,8 +61,7 @@ KVStore::KVStore(const std::string &dir) : level(0), index(0), timestamp(0) {
             }
             sstables.resize(max_level + 1);
         } else {
-            auto add_ss = new std::list<SStable *>;
-            sstables.push_back(*add_ss);
+            sstables.push_back(std::list<SStable *>());
         }
         bool recover = false;
         std::string rec;
@@ -102,14 +120,19 @@ KVStore::KVStore(const std::string &dir) : level(0), index(0), timestamp(0) {
 }
 
 KVStore::~KVStore() {
-    if (memtab->size() > 0) {
+    if (memtab && memtab->size() > 0) {
         MemTableToSSTable();
+        delete memtab;
+        memtab = nullptr;
     }
     for (auto i : sstables) {
         while (i.size()) {
             delete i.front();
             i.pop_front();
         }
+    }
+    if(ref){
+        (*ref)--;
     }
 }
 
@@ -121,6 +144,9 @@ void KVStore::put(const std::string &key, const std::string &s) {
 }
 
 void KVStore::gc() {
+    if(ref_cnt > 0){
+        return;
+    }
     int levels = sstables.size();
     std::unordered_set<std::string> removable_keys;
     memtab->gc(removable_keys);
@@ -136,7 +162,10 @@ void KVStore::gc() {
 
 bool KVStore::get(const std::string &key, std::string &value) const {
     std::string raw = value;
-    bool ret = memtab->get(key, raw);
+    bool ret = false;
+    if(memtab){
+        ret = memtab->get(key, raw);
+    }
     if (ret) {
         if (raw.size() == 0) {
             return false;
@@ -144,25 +173,23 @@ bool KVStore::get(const std::string &key, std::string &value) const {
         value = raw;
         return ret;
     }
-    uint64_t max_stamp = 0;
 
     if (sstables.empty() || (sstables.size() == 1 && sstables[0].empty())) {
         return false;
     }
+
     for (auto s = sstables[0].rbegin(); s != sstables[0].rend(); s++) {
         if ((*s)->_min <= key && (*s)->_max >= key) {
-            if (max_stamp < (*s)->timestamp) {
-                if ((*s)->bloomFilter.test(key)) {
-                    ret = (*s)->get(key, raw);
-                    if (ret) {
-                        if (raw.size() == 0) {
-                            return false;
-                        }
-                        value = raw;
-                        return true;
+            // if ((*s)->bloomFilter.test(key)) {
+                ret = (*s)->get(key, raw);
+                if (ret) {
+                    if (raw.size() == 0) {
+                        return false;
                     }
+                    value = raw;
+                    return true;
                 }
-            }
+            // }
         }
     }
 
@@ -217,14 +244,16 @@ void KVStore::MemTableToSSTable() {
 
     index++;
     timestamp++;
-    fclose(memtab->log);
-    utils::rmfile((dir + "/mem.log").c_str());
     delete memtab;
+    utils::rmfile((dir + "/mem.log").c_str());
     std::string name = path + "/" + std::to_string(index);
     FILE *log = fopen((dir + "/mem.log").c_str(), "wb+");
     memtab = new MemTable(name, log);
     // 如果当前第level层已经满了 --> 触发compaction
     int des = 0;
+    if(ref_cnt > 0){
+        return;
+    }
     while (int(sstables[des].size()) > (2 << (des))) {
         des++;
         compaction(des);
@@ -416,7 +445,9 @@ void KVStore::visit(const std::string &lower,
                                              const std::string &)> &visitor) const {
     int levels = sstables.size();
     std::unordered_set<std::string> used_keys;
-    memtab->visit(lower, upper, visitor, used_keys);
+    if(memtab){
+        memtab->visit(lower, upper, visitor, used_keys);
+    }
     for (auto s = sstables[0].rbegin(); s != sstables[0].rend(); s++) {
         (*s)->visit(lower, upper, visitor, used_keys);
     }

@@ -71,6 +71,7 @@ RetCode Engine::visit(const Key &lower, const Key &upper, const Visitor &visitor
     // std::ignore = lower;
     // std::ignore = upper;
     // std::ignore = visitor;
+    // std::cout << "visit" << std::endl;
     lock.lock();
     kv.visit(lower, upper, visitor);
     lock.unlock();
@@ -88,7 +89,11 @@ RetCode Engine::garbage_collect()
 std::shared_ptr<IROEngine> Engine::snapshot()
 {
     // TODO: your code here
-    return nullptr;
+    // std::cout << "snaped" <<std::endl;
+    lock.lock();
+    KVStore* ptr = kv.snapshot();
+    lock.unlock();
+    return std::make_shared<Snap>(ptr);
 }
 
 }  // namespace kvs

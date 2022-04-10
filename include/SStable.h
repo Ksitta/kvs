@@ -128,6 +128,9 @@ public:
           keypairs(keypairs) {
         _min = keypairs[0].key;
         _max = keypairs[num - 1].key;
+        // for(auto i :keypairs){
+        //     bloomFilter.put(i.key);
+        // }
     }
 
     ~SStable() {

@@ -6,6 +6,8 @@
 #include <set>
 #include <string>
 #include <unordered_set>
+#include <memory>
+#include <atomic>
 
 #include "MemTable.h"
 #include "MurmurHash3.h"
@@ -21,9 +23,13 @@ private:
     int level;
     int index;
     uint64_t timestamp;
+    std::atomic<int> ref_cnt;
+    std::atomic<int> *ref;
 
 public:
     KVStore(const std::string &dir);
+
+    KVStore(){}
 
     ~KVStore();
 
@@ -55,6 +61,8 @@ public:
     void MemTableToSSTable();
 
     void compaction(int des);
+
+    KVStore* snapshot();
 
     uint64_t merge(std::vector<SStable *> &need_merge,
                    std::vector<std::string> &keys,
