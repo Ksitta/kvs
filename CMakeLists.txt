@@ -33,3 +33,5 @@ target_link_libraries(kvs_obj PUBLIC ${GFLAGS_LIBRARIES})
 add_subdirectory(test)
 add_subdirectory(unittest)
 add_subdirectory(bench)
+
+add_subdirectory(mytest)

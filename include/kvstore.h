@@ -1,13 +1,13 @@
 #pragma once
 
 #include <algorithm>
+#include <atomic>
 #include <list>
+#include <memory>
 #include <queue>
 #include <set>
 #include <string>
 #include <unordered_set>
-#include <memory>
-#include <atomic>
 
 #include "MemTable.h"
 #include "MurmurHash3.h"
@@ -15,7 +15,8 @@
 #include "comm.h"
 #include "utils.h"
 
-class KVStore {
+class KVStore
+{
 private:
     std::string dir;
     MemTable *memtab;
@@ -29,13 +30,16 @@ private:
 public:
     KVStore(const std::string &dir);
 
-    KVStore(){}
+    KVStore()
+    {
+    }
 
     ~KVStore();
 
     void gc();
 
-    inline std::string getpath(int n) const {
+    inline std::string getpath(int n) const
+    {
         std::string path = dir + "/level_" + std::to_string(n);
         return path;
     }
@@ -49,9 +53,11 @@ public:
 
     bool get(const std::string &key, std::string &value) const;
 
-    inline bool del(const std::string &key) {
+    inline bool del(const std::string &key)
+    {
         std::string tmp;
-        if (get(key, tmp)) {
+        if (get(key, tmp))
+        {
             put(key, "");
             return true;
         }
@@ -62,7 +68,7 @@ public:
 
     void compaction(int des);
 
-    KVStore* snapshot();
+    KVStore *snapshot();
 
     uint64_t merge(std::vector<SStable *> &need_merge,
                    std::vector<std::string> &keys,

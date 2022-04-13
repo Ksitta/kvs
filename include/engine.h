@@ -77,11 +77,15 @@ private:
     std::mutex lock;
 };
 
-class Snap : public IROEngine{
+class Snap : public IROEngine
+{
 public:
-    Snap(KVStore *kvs) : kv(kvs){}
+    Snap(KVStore *kvs) : kv(kvs)
+    {
+    }
 
-    virtual RetCode get(const Key &key, Value &value) override{
+    virtual RetCode get(const Key &key, Value &value) override
+    {
         lock.lock();
         bool ret = kv->get(key, value);
         lock.unlock();
@@ -94,12 +98,14 @@ public:
 
     virtual RetCode visit(const Key &lower,
                           const Key &upper,
-                          const Visitor &visitor) override{
-                              lock.lock();
-                              kv->visit(lower, upper, visitor);
-                              lock.unlock();
-                              return kSucc;
-                          }
+                          const Visitor &visitor) override
+    {
+        lock.lock();
+        kv->visit(lower, upper, visitor);
+        lock.unlock();
+        return kSucc;
+    }
+
 private:
     std::shared_ptr<KVStore> kv;
     std::mutex lock;
