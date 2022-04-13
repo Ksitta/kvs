@@ -131,9 +131,6 @@ KVStore::~KVStore() {
             i.pop_front();
         }
     }
-    if(ref){
-        (*ref)--;
-    }
 }
 
 void KVStore::put(const std::string &key, const std::string &s) {
