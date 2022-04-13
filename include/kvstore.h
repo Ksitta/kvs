@@ -47,11 +47,11 @@ public:
     void visit(const std::string &lower,
                const std::string &upper,
                const std::function<void(const std::string &,
-                                        const std::string &)> &visitor) const;
+                                        const std::string &)> &visitor);
 
     void put(const std::string &key, const std::string &s);
 
-    bool get(const std::string &key, std::string &value) const;
+    bool get(const std::string &key, std::string &value);
 
     inline bool del(const std::string &key)
     {

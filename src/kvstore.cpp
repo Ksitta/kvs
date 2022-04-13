@@ -34,7 +34,7 @@ KVStore *KVStore::snapshot()
     {
         for (auto each : i)
         {
-            iter->push_back(new SStable(each->dir));
+            iter->push_back(each);
         }
         iter++;
     }
@@ -155,13 +155,13 @@ KVStore::~KVStore()
         MemTableToSSTable();
         delete memtab;
         memtab = nullptr;
-    }
-    for (auto i : sstables)
-    {
-        while (i.size())
+        for (auto i : sstables)
         {
-            delete i.front();
-            i.pop_front();
+            while (i.size())
+            {
+                delete i.front();
+                i.pop_front();
+            }
         }
     }
 }
@@ -197,7 +197,7 @@ void KVStore::gc()
     }
 }
 
-bool KVStore::get(const std::string &key, std::string &value) const
+bool KVStore::get(const std::string &key, std::string &value)
 {
     std::string raw = value;
     bool ret = false;
@@ -532,11 +532,10 @@ void KVStore::compaction(int des)
     }
 }
 
-void KVStore::visit(
-    const std::string &lower,
-    const std::string &upper,
-    const std::function<void(const std::string &, const std::string &)>
-        &visitor) const
+void KVStore::visit(const std::string &lower,
+                    const std::string &upper,
+                    const std::function<void(const std::string &,
+                                             const std::string &)> &visitor)
 {
     int levels = sstables.size();
     std::unordered_set<std::string> used_keys;

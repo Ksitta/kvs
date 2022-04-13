@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <string>
+#include <mutex>
 
 const int FILE_HEADER = 16;
 const int BFSIZE = 10289;

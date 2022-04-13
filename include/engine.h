@@ -2,7 +2,7 @@
 #ifndef INCLUDE_ENGINE_H_
 #define INCLUDE_ENGINE_H_
 #include <functional>
-#include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <vector>
 
@@ -74,7 +74,7 @@ public:
 
 private:
     KVStore kv;
-    std::mutex lock;
+    std::shared_mutex lock;
 };
 
 class Snap : public IROEngine
@@ -86,9 +86,7 @@ public:
 
     virtual RetCode get(const Key &key, Value &value) override
     {
-        lock.lock();
         bool ret = kv->get(key, value);
-        lock.unlock();
         if (ret == false)
         {
             return kNotFound;
@@ -100,15 +98,12 @@ public:
                           const Key &upper,
                           const Visitor &visitor) override
     {
-        lock.lock();
         kv->visit(lower, upper, visitor);
-        lock.unlock();
         return kSucc;
     }
 
 private:
     std::shared_ptr<KVStore> kv;
-    std::mutex lock;
 };
 
 }  // namespace kvs

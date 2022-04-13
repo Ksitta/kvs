@@ -27,6 +27,7 @@ private:
     int total_size;
     int entry_size;
     int offset;
+    std::mutex lock;
 
 public:
     Node *head;
@@ -101,7 +102,7 @@ public:
         return entry_size;
     }
 
-    bool get(const std::string &key, std::string &value) const
+    bool get(const std::string &key, std::string &value)
     {
         Node *pos = head;
         while (pos)
@@ -121,8 +122,10 @@ public:
                     return true;
                 }
                 value.resize(len);
+                lock.lock();
                 fseek(file, off, SEEK_SET);
                 std::ignore = fread((void *) value.data(), 1, len, file);
+                lock.unlock();
                 return true;
             }
             pos = pos->down;

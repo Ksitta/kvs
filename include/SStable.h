@@ -75,6 +75,7 @@ public:
     std::string dir;
     std::string _max;
     std::string _min;
+    std::mutex lock;
 
     BloomFilter bloomFilter;
     std::vector<KeyOffset> keypairs;
@@ -227,7 +228,7 @@ public:
         fflush(file);
     }
 
-    bool get(const std::string &key, std::string &value) const
+    bool get(const std::string &key, std::string &value)
     {
         int left = 0;
         int right = int(keypairs.size());
@@ -260,7 +261,7 @@ public:
                const std::string &upper,
                const std::function<void(const std::string &,
                                         const std::string &)> &visitor,
-               std::unordered_set<std::string> &used_key) const
+               std::unordered_set<std::string> &used_key)
     {
         bool lb = false, ub = false;
         if (lower == "")
@@ -306,11 +307,13 @@ public:
     }
 
     //从文件中获取value offset处的value
-    void readfile(int offset, int len, std::string &value) const
+    void readfile(int offset, int len, std::string &value)
     {
         value.resize(len);
+        lock.lock();
         fseek(file, offset, SEEK_SET);
         std::ignore = fread((void *) value.data(), 1, len, file);
+        lock.unlock();
     }
 
     inline std::vector<KeyOffset> &get_keys()
